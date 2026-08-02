@@ -178,10 +178,12 @@ export const moduleDefinitions: ModuleDefinition[] = [
 
 export function addEmployee(data: Omit<Employee, 'id' | 'employeeId' | 'createdAt' | 'updatedAt'>): Employee {
   employeeCounter++;
+  const total = data.salary.basic + data.salary.housing + data.salary.transportation + data.salary.otherAllowances;
   const employee: Employee = {
     ...data,
     id: generateId(),
     employeeId: formatEmployeeId(employeeCounter),
+    salary: { ...data.salary, total },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -264,6 +266,10 @@ export function seedDemoData() {
       documents: [],
     });
   }
+
+  const seeded = Array.from(employees.values());
+  if (seeded[0]) seeded[0].userId = 'user-1';
+  if (seeded[1]) seeded[1].userId = 'user-2';
 
   // Seed some leave requests
   const empEntries = Array.from(employees.values());

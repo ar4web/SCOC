@@ -1,14 +1,13 @@
 'use client';
 
 import React from 'react';
-import { useLanguageStore } from '@/stores/language-store';
-import { LeaveRequest } from '@/types';
-import { employees } from '@/lib/mock-data';
+import { LeaveRequest, Employee } from '@/types';
 import { getLeaveTypeLabel } from '@/lib/utils';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface LeaveCalendarProps {
   leaves: LeaveRequest[];
+  employees: Map<string, Employee>;
   locale?: 'en' | 'ar';
   dir?: 'ltr' | 'rtl';
 }
@@ -37,7 +36,7 @@ const typeColors: Record<string, string> = {
   unpaid: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 
-export function LeaveCalendar({ leaves, locale = 'en', dir = 'ltr' }: LeaveCalendarProps) {
+export function LeaveCalendar({ leaves, employees, locale = 'en', dir = 'ltr' }: LeaveCalendarProps) {
   const [currentDate, setCurrentDate] = React.useState(() => new Date());
 
   const year = currentDate.getFullYear();

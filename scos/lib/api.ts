@@ -28,7 +28,9 @@ async function request<T>(
       headers,
     });
 
-    const data = await res.json();
+    const contentType = res.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+    const data = isJson ? await res.json() : await res.text();
 
     if (!res.ok) {
       return { success: false, error: data.error || 'Request failed' };

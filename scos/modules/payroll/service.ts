@@ -1,6 +1,17 @@
 import { api } from '@/lib/api';
 import { Payroll } from '@/types';
 
+export interface SalaryUpdate {
+  basic: number;
+  housing: number;
+  transportation: number;
+  otherAllowances: number;
+  total: number;
+  bankName: string;
+  bankAccount: string;
+  iban: string;
+}
+
 export const payrollService = {
   list: (params?: { period?: string; employeeId?: string }) => {
     const query = new URLSearchParams();
@@ -14,6 +25,9 @@ export const payrollService = {
 
   getSalaries: () =>
     api.get<{ data: any[]; total: number }>('/payroll/salaries'),
+
+  updateSalary: (employeeId: string, salary: SalaryUpdate) =>
+    api.patch<SalaryUpdate>('/payroll/salaries', { employeeId, salary }),
 
   getWPS: (period: string) =>
     api.get<string>(`/payroll/wps?period=${period}`),

@@ -6,7 +6,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
-import { api } from '@/lib/api';
+import { payrollService, SalaryUpdate } from '@/modules/payroll/service';
 import { t, formatCurrency } from '@/lib/utils';
 import { Wallet, Save, X, Pencil, Landmark, Phone } from 'lucide-react';
 
@@ -16,16 +16,7 @@ interface SalaryRow {
   fullName: string;
   fullNameAr: string;
   department: string;
-  salary: {
-    basic: number;
-    housing: number;
-    transportation: number;
-    otherAllowances: number;
-    total: number;
-    bankName: string;
-    bankAccount: string;
-    iban: string;
-  };
+  salary: SalaryUpdate;
 }
 
 export default function SalarySetupPage() {
@@ -41,7 +32,7 @@ export default function SalarySetupPage() {
   }, []);
 
   const load = async () => {
-    const res = await api.get<{ data: SalaryRow[]; total: number }>('/payroll/salaries');
+    const res = await payrollService.getSalaries();
     if (res.success && res.data) {
       setRows(res.data.data);
     }
@@ -60,10 +51,7 @@ export default function SalarySetupPage() {
 
   const handleSave = async () => {
     if (!editing || !draft) return;
-    const res = await api.patch<SalaryRow['salary']>('/payroll/salaries', {
-      employeeId: editing.id,
-      salary: draft,
-    });
+    const res = await payrollService.updateSalary(editing.id, draft);
     if (res.success && res.data) {
       addToast({
         type: 'success',
@@ -71,7 +59,7 @@ export default function SalarySetupPage() {
       });
       setRows((prev) =>
         prev.map((r) =>
-          r.id === editing.id ? { ...r, salary: res.data as SalaryRow['salary'] } : r
+          r.id === editing.id ? { ...r, salary: res.data as SalaryUpdate } : r
         )
       );
       cancelEdit();

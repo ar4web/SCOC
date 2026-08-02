@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useLanguageStore } from '@/stores/language-store';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { FormBuilder, FormField } from '@/engines/form-engine';
 import { employeeService } from '@/modules/employee-management/service';
+import { Employee } from '@/types';
 import { t } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
 import { UserPlus, Save, ArrowLeft } from 'lucide-react';
@@ -15,50 +16,52 @@ export default function NewEmployeePage() {
   const router = useRouter();
   const { language, dir } = useLanguageStore();
   const { addToast } = useToast();
+  const [values, setValues] = React.useState<Record<string, string>>({});
   const [saving, setSaving] = React.useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const mergeValues = (next: Record<string, string>) =>
+    setValues((prev) => ({ ...prev, ...next }));
+
+  const handleSubmit = async () => {
     setSaving(true);
 
-    const form = new FormData(e.currentTarget);
     const data = {
       companyId: 'demo-company',
-      fullName: form.get('fullName') as string,
-      fullNameAr: form.get('fullNameAr') as string || '',
-      email: form.get('email') as string,
-      phone: form.get('phone') as string,
-      nationalId: form.get('nationalId') as string,
-      nationality: form.get('nationality') as string || 'Saudi',
+      fullName: values.fullName || '',
+      fullNameAr: values.fullNameAr || '',
+      email: values.email || '',
+      phone: values.phone || '',
+      nationalId: values.nationalId || '',
+      nationality: values.nationality || 'Saudi',
       religion: 'muslim' as const,
-      gender: (form.get('gender') as 'male' | 'female') || 'male',
-      maritalStatus: (form.get('maritalStatus') as 'single' | 'married') || 'single',
-      dateOfBirth: form.get('dateOfBirth') as string,
-      hireDate: form.get('hireDate') as string,
-      contractType: (form.get('contractType') as 'permanent' | 'fixed_term' | 'part_time' | 'probation') || 'permanent',
-      department: form.get('department') as string,
-      position: form.get('position') as string,
+      gender: (values.gender as 'male' | 'female') || 'male',
+      maritalStatus: (values.maritalStatus as 'single' | 'married') || 'single',
+      dateOfBirth: values.dateOfBirth || '',
+      hireDate: values.hireDate || '',
+      contractType: (values.contractType as Employee['contractType']) || 'permanent',
+      department: values.department || '',
+      position: values.position || '',
       salary: {
-        basic: parseFloat(form.get('basic') as string) || 0,
-        housing: parseFloat(form.get('housing') as string) || 0,
-        transportation: parseFloat(form.get('transportation') as string) || 0,
+        basic: parseFloat(values.basic) || 0,
+        housing: parseFloat(values.housing) || 0,
+        transportation: parseFloat(values.transportation) || 0,
         otherAllowances: 0,
         total: 0,
-        bankName: form.get('bankName') as string || '',
-        bankAccount: form.get('bankAccount') as string || '',
-        iban: form.get('iban') as string || '',
+        bankName: values.bankName || '',
+        bankAccount: values.bankAccount || '',
+        iban: values.iban || '',
       },
       address: {
-        street: form.get('street') as string || '',
-        city: form.get('city') as string || '',
-        region: form.get('region') as string || '',
-        postalCode: form.get('postalCode') as string || '',
-        country: form.get('country') as string || 'Saudi Arabia',
+        street: '',
+        city: '',
+        region: '',
+        postalCode: '',
+        country: 'Saudi Arabia',
       },
       emergencyContact: {
-        name: form.get('emergencyName') as string || '',
-        relation: form.get('emergencyRelation') as string || '',
-        phone: form.get('emergencyPhone') as string || '',
+        name: values.emergencyName || '',
+        relation: values.emergencyRelation || '',
+        phone: values.emergencyPhone || '',
       },
       status: 'active' as const,
       documents: [],
@@ -74,11 +77,112 @@ export default function NewEmployeePage() {
     }
   };
 
+  const personalFields: FormField[][] = [
+    [
+      { name: 'fullName', label: 'Full Name (English)', labelAr: 'الاسم الكامل (إنجليزي)', required: true },
+      { name: 'fullNameAr', label: 'Full Name (Arabic)', labelAr: 'الاسم الكامل (عربي)' },
+      { name: 'email', label: 'Email', labelAr: 'البريد الإلكتروني', type: 'email', required: true },
+      { name: 'phone', label: 'Phone', labelAr: 'رقم الهاتف', type: 'tel', required: true },
+      {
+        name: 'nationalId',
+        label: 'National ID (Iqama)',
+        labelAr: 'رقم الهوية/الإقامة',
+        required: true,
+        helperText: '10 digits',
+        helperTextAr: '10 أرقام',
+        validation: { pattern: /^\d{10}$/ },
+      },
+      { name: 'nationality', label: 'Nationality', labelAr: 'الجنسية' },
+      { name: 'dateOfBirth', label: 'Date of Birth', labelAr: 'تاريخ الميلاد', type: 'date', required: true },
+      { name: 'hireDate', label: 'Hire Date', labelAr: 'تاريخ التعيين', type: 'date', required: true },
+    ],
+    [
+      {
+        name: 'gender',
+        label: 'Gender',
+        labelAr: 'الجنس',
+        type: 'select',
+        options: [
+          { value: 'male', label: 'Male', labelAr: 'ذكر' },
+          { value: 'female', label: 'Female', labelAr: 'أنثى' },
+        ],
+      },
+      {
+        name: 'maritalStatus',
+        label: 'Marital Status',
+        labelAr: 'الحالة الاجتماعية',
+        type: 'select',
+        options: [
+          { value: 'single', label: 'Single', labelAr: 'أعزب' },
+          { value: 'married', label: 'Married', labelAr: 'متزوج' },
+        ],
+      },
+      {
+        name: 'contractType',
+        label: 'Contract Type',
+        labelAr: 'نوع العقد',
+        type: 'select',
+        options: [
+          { value: 'permanent', label: 'Permanent', labelAr: 'دائم' },
+          { value: 'fixed_term', label: 'Fixed Term', labelAr: 'محدد المدة' },
+          { value: 'part_time', label: 'Part Time', labelAr: 'دوام جزئي' },
+          { value: 'probation', label: 'Probation', labelAr: 'تجريبي' },
+        ],
+      },
+    ],
+  ];
+
+  const employmentFields: FormField[][] = [
+    [
+      { name: 'department', label: 'Department', labelAr: 'القسم', required: true },
+      { name: 'position', label: 'Position', labelAr: 'المنصب', required: true },
+    ],
+  ];
+
+  const salaryFields: FormField[][] = [
+    [
+      { name: 'basic', label: 'Basic Salary', labelAr: 'الراتب الأساسي', type: 'number' },
+      { name: 'housing', label: 'Housing Allowance', labelAr: 'بدل السكن', type: 'number' },
+      { name: 'transportation', label: 'Transportation Allowance', labelAr: 'بدل المواصلات', type: 'number' },
+      { name: 'bankName', label: 'Bank Name', labelAr: 'اسم البنك' },
+      { name: 'bankAccount', label: 'Bank Account', labelAr: 'رقم الحساب' },
+      { name: 'iban', label: 'IBAN', labelAr: 'رقم الآيبان' },
+    ],
+  ];
+
+  const emergencyFields: FormField[][] = [
+    [
+      { name: 'emergencyName', label: 'Name', labelAr: 'الاسم' },
+      { name: 'emergencyRelation', label: 'Relation', labelAr: 'صلة القرابة' },
+      { name: 'emergencyPhone', label: 'Phone', labelAr: 'رقم الهاتف', type: 'tel' },
+    ],
+  ];
+
+  const sections = [
+    {
+      title: t('Personal Information', 'المعلومات الشخصية', language),
+      icon: <UserPlus className="h-5 w-5 text-primary" />,
+      fields: personalFields,
+    },
+    {
+      title: t('Employment Details', 'تفاصيل التوظيف', language),
+      fields: employmentFields,
+    },
+    {
+      title: t('Salary Information', 'معلومات الراتب', language),
+      fields: salaryFields,
+    },
+    {
+      title: t('Emergency Contact', 'جهة الاتصال في الطوارئ', language),
+      fields: emergencyFields,
+    },
+  ];
+
   return (
     <div className="max-w-3xl space-y-6">
       <div className="flex items-center gap-4">
         <button onClick={() => router.back()} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-          <ArrowLeft className="h-5 w-5 text-gray-600" />
+          <ArrowLeft className={`h-5 w-5 text-gray-600 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
         </button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -90,120 +194,36 @@ export default function NewEmployeePage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <Card>
+      {sections.map((section, idx) => (
+        <Card key={idx}>
           <CardHeader className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <UserPlus className="h-5 w-5 text-primary" />
-            </div>
-            <h2 className="text-lg font-semibold">
-              {t('Personal Information', 'المعلومات الشخصية', language)}
-            </h2>
-          </CardHeader>
-          <CardBody className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label={t('Full Name (English)', 'الاسم الكامل (إنجليزي)', language)} name="fullName" required />
-              <Input label={t('Full Name (Arabic)', 'الاسم الكامل (عربي)', language)} name="fullNameAr" />
-              <Input label={t('Email', 'البريد الإلكتروني', language)} name="email" type="email" required />
-              <Input label={t('Phone', 'رقم الهاتف', language)} name="phone" type="tel" required />
-              <Input
-                label={t('National ID (Iqama)', 'رقم الهوية/الإقامة', language)}
-                name="nationalId"
-                required
-                helperText={t('10 digits', '10 أرقام', language)}
-              />
-              <Input label={t('Nationality', 'الجنسية', language)} name="nationality" defaultValue="Saudi" />
-              <Input label={t('Date of Birth', 'تاريخ الميلاد', language)} name="dateOfBirth" type="date" required />
-              <Input label={t('Hire Date', 'تاريخ التعيين', language)} name="hireDate" type="date" required />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('Gender', 'الجنس', language)}
-                </label>
-                <select name="gender" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary">
-                  <option value="male">{t('Male', 'ذكر', language)}</option>
-                  <option value="female">{t('Female', 'أنثى', language)}</option>
-                </select>
+            {section.icon && (
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                {section.icon}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('Marital Status', 'الحالة الاجتماعية', language)}
-                </label>
-                <select name="maritalStatus" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary">
-                  <option value="single">{t('Single', 'أعزب', language)}</option>
-                  <option value="married">{t('Married', 'متزوج', language)}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('Contract Type', 'نوع العقد', language)}
-                </label>
-                <select name="contractType" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary">
-                  <option value="permanent">{t('Permanent', 'دائم', language)}</option>
-                  <option value="fixed_term">{t('Fixed Term', 'محدد المدة', language)}</option>
-                  <option value="part_time">{t('Part Time', 'دوام جزئي', language)}</option>
-                  <option value="probation">{t('Probation', 'تجريبي', language)}</option>
-                </select>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card className="mt-6">
-          <CardHeader>
-            <h2 className="text-lg font-semibold">{t('Employment Details', 'تفاصيل التوظيف', language)}</h2>
+            )}
+            <h2 className="text-lg font-semibold">{section.title}</h2>
           </CardHeader>
-          <CardBody className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label={t('Department', 'القسم', language)} name="department" required />
-              <Input label={t('Position', 'المنصب', language)} name="position" required />
-            </div>
+          <CardBody>
+            <FormBuilder
+              fields={section.fields}
+              locale={language}
+              onValuesChange={mergeValues}
+              showSubmit={false}
+            />
           </CardBody>
         </Card>
+      ))}
 
-        <Card className="mt-6">
-          <CardHeader>
-            <h2 className="text-lg font-semibold">{t('Salary Information', 'معلومات الراتب', language)}</h2>
-          </CardHeader>
-          <CardBody className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input label={t('Basic Salary', 'الراتب الأساسي', language)} name="basic" type="number" />
-              <Input label={t('Housing Allowance', 'بدل السكن', language)} name="housing" type="number" />
-              <Input label={t('Transportation Allowance', 'بدل المواصلات', language)} name="transportation" type="number" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input label={t('Bank Name', 'اسم البنك', language)} name="bankName" />
-              <Input label={t('Bank Account', 'رقم الحساب', language)} name="bankAccount" />
-              <Input label={t('IBAN', 'رقم الآيبان', language)} name="iban" />
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card className="mt-6">
-          <CardHeader>
-            <h2 className="text-lg font-semibold">{t('Emergency Contact', 'جهة الاتصال في الطوارئ', language)}</h2>
-          </CardHeader>
-          <CardBody className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input label={t('Name', 'الاسم', language)} name="emergencyName" />
-              <Input label={t('Relation', 'صلة القرابة', language)} name="emergencyRelation" />
-              <Input label={t('Phone', 'رقم الهاتف', language)} name="emergencyPhone" type="tel" />
-            </div>
-          </CardBody>
-        </Card>
-
-        <div className="flex justify-end gap-3 mt-6">
-          <Button variant="outline" type="button" onClick={() => router.back()}>
-            {t('Cancel', 'إلغاء', language)}
-          </Button>
-          <Button type="submit" loading={saving}>
-            <Save className="h-4 w-4" />
-            {t('Save Employee', 'حفظ الموظف', language)}
-          </Button>
-        </div>
-      </form>
+      <div className="flex justify-end gap-3">
+        <Button variant="outline" onClick={() => router.back()}>
+          {t('Cancel', 'إلغاء', language)}
+        </Button>
+        <Button onClick={handleSubmit} loading={saving}>
+          <Save className="h-4 w-4" />
+          {t('Save Employee', 'حفظ الموظف', language)}
+        </Button>
+      </div>
     </div>
   );
 }

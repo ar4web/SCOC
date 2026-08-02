@@ -137,10 +137,16 @@ export default function EmployeeDetailPage() {
               <span className="text-sm text-gray-500">{t('Transportation', 'مواصلات', language)}</span>
               <span className="text-sm font-medium">{formatCurrency(employee.salary.transportation)}</span>
             </div>
+            {employee.salary.otherAllowances > 0 && (
+              <div className="flex justify-between py-1">
+                <span className="text-sm text-gray-500">{t('Other Allowances', 'بدلات أخرى', language)}</span>
+                <span className="text-sm font-medium">{formatCurrency(employee.salary.otherAllowances)}</span>
+              </div>
+            )}
             <div className="flex justify-between py-1 border-t pt-3">
               <span className="text-sm font-semibold text-gray-900">{t('Total', 'الإجمالي', language)}</span>
               <span className="text-sm font-bold text-primary">
-                {formatCurrency(employee.salary.basic + employee.salary.housing + employee.salary.transportation)}
+                {formatCurrency(employee.salary.total)}
               </span>
             </div>
           </CardBody>

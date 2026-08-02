@@ -35,6 +35,8 @@ interface FormBuilderProps {
   title?: string;
   titleAr?: string;
   icon?: React.ReactNode;
+  showSubmit?: boolean;
+  onValuesChange?: (data: Record<string, string>) => void;
 }
 
 export function FormBuilder({
@@ -48,12 +50,18 @@ export function FormBuilder({
   title,
   titleAr,
   icon,
+  showSubmit = true,
+  onValuesChange,
 }: FormBuilderProps) {
   const [values, setValues] = React.useState<Record<string, string>>(defaultValues || {});
   const [errors, setErrors] = React.useState<Record<string, string>>({});
 
   const handleChange = (name: string, value: string) => {
-    setValues((prev) => ({ ...prev, [name]: value }));
+    setValues((prev) => {
+      const next = { ...prev, [name]: value };
+      onValuesChange?.(next);
+      return next;
+    });
     if (errors[name]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -200,7 +208,7 @@ export function FormBuilder({
         </div>
       ))}
 
-      {onSubmit && (
+      {showSubmit && onSubmit && (
         <div className="flex justify-end gap-3 pt-2">
           <button
             type="submit"

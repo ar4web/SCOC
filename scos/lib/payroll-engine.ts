@@ -5,6 +5,93 @@ import { generateId } from '@/lib/utils';
 let payrolls: Map<string, Payroll> = new Map();
 let payrollCounter = 0;
 
+export interface GOSIRate {
+  id: string;
+  label: string;
+  labelAr: string;
+  employee: number;
+  employer: number;
+  note: string;
+  noteAr: string;
+  saudiOnly?: boolean;
+}
+
+export const GOSI_RATES: GOSIRate[] = [
+  {
+    id: 'old_age',
+    label: 'Old-age, disability & death insurance',
+    labelAr: 'تأمين الشيخوخة والعجز والوفاة',
+    employee: 0.09,
+    employer: 0.09,
+    note: '2024 rate',
+    noteAr: 'نسبة 2024',
+  },
+  {
+    id: 'work_hazards',
+    label: 'Work hazards insurance',
+    labelAr: 'تأمين أخطار العمل',
+    employee: 0,
+    employer: 0.02,
+    note: 'Occupational hazards only',
+    noteAr: 'أخطار العمل فقط',
+  },
+  {
+    id: 'sanad',
+    label: 'Unemployment (SANED)',
+    labelAr: 'التعطل عن العمل (ساند)',
+    employee: 0.0075,
+    employer: 0.0075,
+    note: 'Saudi nationals only',
+    noteAr: 'للسعوديين فقط',
+    saudiOnly: true,
+  },
+];
+
+export const GOSI_WAGE_CAP = 45000;
+
+export interface GOSIBreakdown {
+  applicableWage: number;
+  isSaudi: boolean;
+  rows: {
+    id: string;
+    label: string;
+    labelAr: string;
+    note: string;
+    noteAr: string;
+    employeeShare: number;
+    employerShare: number;
+  }[];
+  totalEmployee: number;
+  totalEmployer: number;
+  total: number;
+}
+
+export function calculateGOSI(wage: number, isSaudi = true): GOSIBreakdown {
+  const applicable = Math.min(Math.max(wage, 0), GOSI_WAGE_CAP);
+
+  const rows = GOSI_RATES.filter((r) => (r.saudiOnly ? isSaudi : true)).map((r) => ({
+    id: r.id,
+    label: r.label,
+    labelAr: r.labelAr,
+    note: r.note,
+    noteAr: r.noteAr,
+    employeeShare: Math.round(applicable * r.employee),
+    employerShare: Math.round(applicable * r.employer),
+  }));
+
+  const totalEmployee = rows.reduce((s, r) => s + r.employeeShare, 0);
+  const totalEmployer = rows.reduce((s, r) => s + r.employerShare, 0);
+
+  return {
+    applicableWage: applicable,
+    isSaudi,
+    rows,
+    totalEmployee,
+    totalEmployer,
+    total: totalEmployee + totalEmployer,
+  };
+}
+
 export function getPayrolls() {
   return Array.from(payrolls.values());
 }
@@ -26,14 +113,7 @@ export function processPayroll(period: string): { success: boolean; count: numbe
     const deductions: Deduction[] = [
       { type: 'gosi_employee', amount: Math.round(gosiEmployee), description: 'GOSI Employee Share' },
     ];
-    if (emp.salary.basic > 0) {
-      deductions.push({
-        type: 'other',
-        amount: 0,
-        description: '',
-      });
-    }
-    const netPay = Math.round(total - gosiEmployee + gosiEmployer);
+    const netPay = Math.round(total - gosiEmployee);
 
     const payroll: Payroll = {
       id: generateId(),

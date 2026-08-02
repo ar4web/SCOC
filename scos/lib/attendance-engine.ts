@@ -4,25 +4,35 @@ import { employees } from '@/lib/mock-data';
 
 let attendanceRecords: Map<string, Attendance> = new Map();
 
+function resolveEmployeeId(employeeId: string): string | null {
+  if (employees.has(employeeId)) return employeeId;
+  const linked = Array.from(employees.values()).find((e) => e.userId === employeeId);
+  return linked ? linked.id : null;
+}
+
 export function getAttendance(date?: string, employeeId?: string) {
   let list = Array.from(attendanceRecords.values());
   if (date) list = list.filter((a) => a.date === date);
-  if (employeeId) list = list.filter((a) => a.employeeId === employeeId);
+  if (employeeId) {
+    const resolved = resolveEmployeeId(employeeId) || employeeId;
+    list = list.filter((a) => a.employeeId === resolved);
+  }
   return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export function clockIn(employeeId: string): { success: boolean; record?: Attendance; error?: string } {
+  const resolved = resolveEmployeeId(employeeId);
+  if (!resolved) {
+    return { success: false, error: 'Employee not found' };
+  }
+
   const today = new Date().toISOString().split('T')[0];
   const existing = Array.from(attendanceRecords.values()).find(
-    (a) => a.employeeId === employeeId && a.date === today
+    (a) => a.employeeId === resolved && a.date === today
   );
 
   if (existing) {
     return { success: false, error: 'Already clocked in today' };
-  }
-
-  if (!employees.has(employeeId)) {
-    return { success: false, error: 'Employee not found' };
   }
 
   const now = new Date();
@@ -33,7 +43,7 @@ export function clockIn(employeeId: string): { success: boolean; record?: Attend
 
   const record: Attendance = {
     id: generateId(),
-    employeeId,
+    employeeId: resolved,
     companyId: 'demo-company',
     date: today,
     clockIn: time,
@@ -45,9 +55,14 @@ export function clockIn(employeeId: string): { success: boolean; record?: Attend
 }
 
 export function clockOut(employeeId: string): { success: boolean; record?: Attendance; error?: string } {
+  const resolved = resolveEmployeeId(employeeId);
+  if (!resolved) {
+    return { success: false, error: 'Employee not found' };
+  }
+
   const today = new Date().toISOString().split('T')[0];
   const existing = Array.from(attendanceRecords.values()).find(
-    (a) => a.employeeId === employeeId && a.date === today
+    (a) => a.employeeId === resolved && a.date === today
   );
 
   if (!existing) {

@@ -7,13 +7,13 @@ import { useAuthStore } from '@/stores/auth-store';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { TableSkeleton } from '@/components/ui/Skeleton';
+import { DataTable, Column } from '@/engines/table-engine';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
 import { LeaveCalendar } from '@/components/modules/LeaveCalendar';
 import { leaveService } from '@/modules/leave-management/service';
-import { employees } from '@/lib/mock-data';
-import { LeaveRequest } from '@/types';
+import { employeeService } from '@/modules/employee-management/service';
+import { Employee, LeaveRequest } from '@/types';
 import { t, formatDate, getLeaveTypeLabel } from '@/lib/utils';
 import { Calendar, Plus, CheckCircle2, XCircle, List, Clock } from 'lucide-react';
 
@@ -22,19 +22,26 @@ export default function LeavesPage() {
   const { user } = useAuthStore();
   const { addToast } = useToast();
   const [leaves, setLeaves] = React.useState<LeaveRequest[]>([]);
+  const [employees, setEmployees] = React.useState<Map<string, Employee>>(new Map());
   const [loading, setLoading] = React.useState(true);
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [tab, setTab] = React.useState<'list' | 'calendar'>('list');
 
   React.useEffect(() => {
-    loadLeaves();
+    loadData();
   }, []);
 
-  const loadLeaves = async () => {
+  const loadData = async () => {
     setLoading(true);
-    const res = await leaveService.list();
-    if (res.success && res.data) {
-      setLeaves(res.data.data);
+    const [leaveRes, empRes] = await Promise.all([
+      leaveService.list(),
+      employeeService.getActive(),
+    ]);
+    if (leaveRes.success && leaveRes.data) {
+      setLeaves(leaveRes.data.data);
+    }
+    if (empRes.success && empRes.data) {
+      setEmployees(new Map(empRes.data.data.map((e) => [e.id, e])));
     }
     setLoading(false);
   };
@@ -54,12 +61,74 @@ export default function LeavesPage() {
           ? t('Leave approved', 'تمت الموافقة على الإجازة', language)
           : t('Leave rejected', 'تم رفض الإجازة', language),
       });
-      loadLeaves();
+      loadData();
     } else {
       addToast({ type: 'error', title: res.error || 'Action failed' });
     }
     setActionLoading(null);
   };
+
+  const getEmployeeName = (leave: LeaveRequest) => {
+    const emp = employees.get(leave.employeeId);
+    return emp ? (language === 'ar' ? emp.fullNameAr || emp.fullName : emp.fullName) : leave.employeeId;
+  };
+
+  const columns: Column<LeaveRequest>[] = [
+    {
+      key: 'employee',
+      header: t('Employee', 'الموظف', language),
+      render: (leave) => <span className="font-medium text-gray-900">{getEmployeeName(leave)}</span>,
+    },
+    {
+      key: 'type',
+      header: t('Type', 'النوع', language),
+      render: (leave) => <span>{getLeaveTypeLabel(leave.type, language)}</span>,
+    },
+    {
+      key: 'dates',
+      header: t('Dates', 'التواريخ', language),
+      render: (leave) => `${formatDate(leave.startDate)} - ${formatDate(leave.endDate)}`,
+    },
+    { key: 'daysCount', header: t('Days', 'الأيام', language) },
+    {
+      key: 'status',
+      header: t('Status', 'الحالة', language),
+      render: (leave) => <Badge status={leave.status} locale={language} />,
+    },
+    ...(isManager
+      ? [{
+          key: 'actions',
+          header: t('Actions', 'الإجراءات', language),
+          render: (leave: LeaveRequest) =>
+            leave.status === 'pending' ? (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => handleAction(leave, 'approve')}
+                  disabled={actionLoading === leave.id}
+                  className="p-1.5 rounded-lg text-success hover:bg-success/10 transition-colors disabled:opacity-50"
+                  aria-label={t('Approve', 'موافقة', language)}
+                  title={t('Approve', 'موافقة', language)}
+                >
+                  <CheckCircle2 className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => handleAction(leave, 'reject')}
+                  disabled={actionLoading === leave.id}
+                  className="p-1.5 rounded-lg text-error hover:bg-error/10 transition-colors disabled:opacity-50"
+                  aria-label={t('Reject', 'رفض', language)}
+                  title={t('Reject', 'رفض', language)}
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
+            ) : (
+              <span className="text-xs text-gray-400">
+                {leave.approvedAt ? formatDate(leave.approvedAt) : '--'}
+              </span>
+            ),
+        } as Column<LeaveRequest>]
+      : []),
+  ];
 
   const pendingCount = leaves.filter((l) => l.status === 'pending').length;
 
@@ -113,12 +182,8 @@ export default function LeavesPage() {
         </CardHeader>
         <CardBody className={tab === 'calendar' ? 'p-4' : 'p-0'}>
           {tab === 'calendar' ? (
-            <LeaveCalendar leaves={leaves} locale={language} dir={dir} />
-          ) : loading ? (
-            <div className="p-6">
-              <TableSkeleton rows={5} cols={6} />
-            </div>
-          ) : leaves.length === 0 ? (
+            <LeaveCalendar leaves={leaves} employees={employees} locale={language} dir={dir} />
+          ) : leaves.length === 0 && !loading ? (
             <EmptyState
               icon={Calendar}
               title={t('No leave requests yet', 'لا توجد طلبات إجازات بعد', language)}
@@ -134,86 +199,16 @@ export default function LeavesPage() {
               }
             />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50/50">
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('Employee', 'الموظف', language)}
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('Type', 'النوع', language)}
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('Dates', 'التواريخ', language)}
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('Days', 'الأيام', language)}
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('Status', 'الحالة', language)}
-                    </th>
-                    {isManager && (
-                      <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('Actions', 'الإجراءات', language)}
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {leaves.map((leave) => {
-                    const emp = employees.get(leave.employeeId);
-                    return (
-                      <tr key={leave.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          {emp ? (language === 'ar' ? emp.fullNameAr || emp.fullName : emp.fullName) : leave.employeeId}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {getLeaveTypeLabel(leave.type, language)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {formatDate(leave.startDate)} - {formatDate(leave.endDate)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{leave.daysCount}</td>
-                        <td className="px-6 py-4">
-                          <Badge status={leave.status} locale={language} />
-                        </td>
-                        {isManager && (
-                          <td className="px-6 py-4 text-right">
-                            {leave.status === 'pending' ? (
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  onClick={() => handleAction(leave, 'approve')}
-                                  disabled={actionLoading === leave.id}
-                                  className="p-1.5 rounded-lg text-success hover:bg-success/10 transition-colors disabled:opacity-50"
-                                  aria-label={t('Approve', 'موافقة', language)}
-                                  title={t('Approve', 'موافقة', language)}
-                                >
-                                  <CheckCircle2 className="h-5 w-5" />
-                                </button>
-                                <button
-                                  onClick={() => handleAction(leave, 'reject')}
-                                  disabled={actionLoading === leave.id}
-                                  className="p-1.5 rounded-lg text-error hover:bg-error/10 transition-colors disabled:opacity-50"
-                                  aria-label={t('Reject', 'رفض', language)}
-                                  title={t('Reject', 'رفض', language)}
-                                >
-                                  <XCircle className="h-5 w-5" />
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-gray-400">
-                                {leave.approvedAt ? formatDate(leave.approvedAt) : '--'}
-                              </span>
-                            )}
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <DataTable<LeaveRequest>
+              columns={columns}
+              data={leaves}
+              loading={loading}
+              locale={language}
+              dir={dir}
+              emptyMessage={t('No leave requests yet', 'لا توجد طلبات إجازات بعد', language)}
+              emptyMessageAr={t('No leave requests yet', 'لا توجد طلبات إجازات بعد', language)}
+              getRowKey={(leave) => leave.id}
+            />
           )}
         </CardBody>
       </Card>

@@ -42,6 +42,21 @@ export default function ModulesPage() {
         );
         return;
       }
+    } else {
+      const dependents = modules.filter(
+        (m) => localStates[m.id] && m.id !== moduleId && m.dependencies.includes(moduleId)
+      );
+      if (dependents.length > 0) {
+        const names = dependents.map((m) => t(m.name, m.nameAr, language)).join(', ');
+        setWarning(
+          t(
+            `Cannot disable: ${names} depend${dependents.length === 1 ? 's' : ''} on this module.`,
+            `لا يمكن التعطيل: ${names} تعتمد على هذه الوحدة.`,
+            language
+          )
+        );
+        return;
+      }
     }
 
     setWarning(null);
@@ -52,7 +67,7 @@ export default function ModulesPage() {
     for (const [moduleId, enabled] of Object.entries(localStates)) {
       const current = moduleStates[moduleId];
       if (current !== enabled) {
-        const result = await toggleModule(moduleId);
+        const result = await toggleModule(moduleId, enabled);
         if (!result.success) {
           addToast({ type: 'error', title: result.error || 'Error' });
           return;

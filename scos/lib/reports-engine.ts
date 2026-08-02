@@ -6,7 +6,10 @@ export function getDashboardStats() {
 
   const activeEmployees = empList.filter((e) => e.status === 'active').length;
   const pendingLeaves = leaveList.filter((l) => l.status === 'pending').length;
-  const totalPayroll = empList.reduce((sum, e) => sum + e.salary.basic + e.salary.housing + e.salary.transportation, 0);
+  const totalPayroll = empList.reduce(
+    (sum, e) => sum + e.salary.basic + e.salary.housing + e.salary.transportation + e.salary.otherAllowances,
+    0
+  );
   const avgSalary = empList.length > 0 ? Math.round(totalPayroll / empList.length) : 0;
 
   const departments: Record<string, number> = {};

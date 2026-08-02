@@ -3,12 +3,25 @@
 import React from 'react';
 import { useLanguageStore } from '@/stores/language-store';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
 import { DataTable, Column } from '@/engines/table-engine';
 import { adminService, AuditLog } from '@/modules/administration/service';
-import { User } from '@/types';
+import { User, UserRole } from '@/types';
 import { t, formatDate } from '@/lib/utils';
 import { Shield, Activity, Users, ClipboardList } from 'lucide-react';
+
+const roleLabels: Record<UserRole, { en: string; ar: string }> = {
+  admin: { en: 'Admin', ar: 'مدير' },
+  hr_manager: { en: 'HR Manager', ar: 'مدير موارد بشرية' },
+  manager: { en: 'Manager', ar: 'مدير' },
+  employee: { en: 'Employee', ar: 'موظف' },
+};
+
+const roleColors: Record<UserRole, string> = {
+  admin: 'text-secondary bg-secondary/10',
+  hr_manager: 'text-primary bg-primary/10',
+  manager: 'text-warning bg-warning/10',
+  employee: 'text-gray-600 bg-gray-100',
+};
 
 export default function AdministrationPage() {
   const { language, dir } = useLanguageStore();
@@ -39,10 +52,9 @@ export default function AdministrationPage() {
       key: 'role',
       header: t('Role', 'الدور', language),
       render: (u) => (
-        <Badge
-          status={u.role === 'admin' ? 'active' : 'present'}
-          locale={language}
-        />
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[u.role]}`}>
+          {t(roleLabels[u.role].en, roleLabels[u.role].ar, language)}
+        </span>
       ),
     },
     {

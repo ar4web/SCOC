@@ -3,50 +3,16 @@
 import React from 'react';
 import { useLanguageStore } from '@/stores/language-store';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
+import { calculateGOSI, GOSI_WAGE_CAP } from '@/lib/payroll-engine';
 import { t, formatCurrency } from '@/lib/utils';
 import { Shield, Calculator, TrendingUp, Users } from 'lucide-react';
-
-const GOSI_RATES = [
-  { label: 'Old-age, disability & death insurance', labelAr: 'تأمين الشيخوخة والعجز والوفاة', employee: 0.09, employer: 0.09, note: '2024 rate' },
-  { label: 'Work hazards insurance', labelAr: 'تأمين أخطار العمل', employee: 0, employer: 0.02, note: 'Occupational hazards only' },
-  { label: 'Unemployment (SANED)', labelAr: 'التعطل عن العمل (ساند)', employee: 0.0075, employer: 0.0075, note: 'Saudi nationals only' },
-];
 
 export default function GOSIPage() {
   const { language } = useLanguageStore();
   const [wage, setWage] = React.useState(10000);
-  const [sauidCitizen, setSauidCitizen] = React.useState(true);
+  const [isSaudi, setIsSaudi] = React.useState(true);
 
-  const cap = 45000;
-
-  const calculate = (w: number) => {
-    const applicable = Math.min(w, cap);
-    const isSaudi = sauidCitizen;
-
-    const rows = GOSI_RATES.filter((r) => {
-      if (!isSaudi && r.label === 'Unemployment (SANED)') return false;
-      return true;
-    });
-
-    const details = rows.map((r) => {
-      const employeeShare = r.employee > 0 ? applicable * r.employee : 0;
-      const employerShare = r.employer > 0 ? applicable * r.employer : 0;
-      return {
-        label: r.label,
-        labelAr: r.labelAr,
-        note: r.note,
-        employeeShare,
-        employerShare,
-      };
-    });
-
-    const totalEmployee = details.reduce((s, d) => s + d.employeeShare, 0);
-    const totalEmployer = details.reduce((s, d) => s + d.employerShare, 0);
-
-    return { applicable, totalEmployee, totalEmployer, total: totalEmployee + totalEmployer, details };
-  };
-
-  const result = calculate(wage);
+  const result = calculateGOSI(wage, isSaudi);
 
   return (
     <div className="space-y-6">
@@ -82,7 +48,7 @@ export default function GOSIPage() {
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  {t(`Contribution cap is SAR ${cap.toLocaleString()} per month`, `سقف الاشتراك ${cap.toLocaleString()} ريال شهرياً`, language)}
+                  {t(`Contribution cap is SAR ${GOSI_WAGE_CAP.toLocaleString()} per month`, `سقف الاشتراك ${GOSI_WAGE_CAP.toLocaleString()} ريال شهرياً`, language)}
                 </p>
               </div>
 
@@ -92,17 +58,17 @@ export default function GOSIPage() {
                 </span>
                 <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => setSauidCitizen(true)}
+                    onClick={() => setIsSaudi(true)}
                     className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      sauidCitizen ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      isSaudi ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
                     {t('Saudi', 'سعودي', language)}
                   </button>
                   <button
-                    onClick={() => setSauidCitizen(false)}
+                    onClick={() => setIsSaudi(false)}
                     className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      !sauidCitizen ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      !isSaudi ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
                     {t('Non-Saudi', 'غير سعودي', language)}
@@ -115,7 +81,7 @@ export default function GOSIPage() {
                   {t('Applicable Wage', 'الراتب الخاضع للاشتراك', language)}
                 </div>
                 <div className="text-2xl font-bold text-primary">
-                  {formatCurrency(result.applicable)}
+                  {formatCurrency(result.applicableWage)}
                 </div>
               </div>
             </CardBody>
@@ -189,13 +155,13 @@ export default function GOSIPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {result.details.map((d) => (
-                      <tr key={d.label} className="hover:bg-gray-50/50">
+                    {result.rows.map((d) => (
+                      <tr key={d.id} className="hover:bg-gray-50/50">
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">
                             {t(d.label, d.labelAr, language)}
                           </div>
-                          <div className="text-xs text-gray-400">{d.note}</div>
+                          <div className="text-xs text-gray-400">{t(d.note, d.noteAr, language)}</div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600 text-right">
                           {d.employeeShare > 0 ? formatCurrency(d.employeeShare) : '--'}

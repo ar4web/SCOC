@@ -14,6 +14,8 @@ export const employeeService = {
 
   getById: (id: string) => api.get<Employee>(`/employees/${id}`),
 
+  getActive: () => api.get<PaginatedResponse<Employee>>('/employees?status=active&pageSize=1000'),
+
   create: (data: Omit<Employee, 'id' | 'employeeId' | 'createdAt' | 'updatedAt'>) =>
     api.post<Employee>('/employees', data),
 

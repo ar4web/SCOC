@@ -7,24 +7,36 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { leaveService } from '@/modules/leave-management/service';
-import { employees } from '@/lib/mock-data';
-import { Employee } from '@/types';
+import { employeeService } from '@/modules/employee-management/service';
+import { Employee, LeaveType } from '@/types';
 import { t, getLeaveTypeLabel } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
-import { CalendarDays, Save, ArrowLeft, User } from 'lucide-react';
+import { CalendarDays, Save, ArrowLeft } from 'lucide-react';
 
 export default function NewLeavePage() {
   const router = useRouter();
-  const { language } = useLanguageStore();
+  const { language, dir } = useLanguageStore();
   const [saving, setSaving] = React.useState(false);
   const [selectedEmployee, setSelectedEmployee] = React.useState('');
   const [leaveType, setLeaveType] = React.useState('annual');
   const [startDate, setStartDate] = React.useState('');
   const [endDate, setEndDate] = React.useState('');
-  const { addToast } = useToast();
   const [reason, setReason] = React.useState('');
+  const [employees, setEmployees] = React.useState<Employee[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const { addToast } = useToast();
 
-  const employeeList = Array.from(employees.values()).filter((e) => e.status === 'active');
+  React.useEffect(() => {
+    loadEmployees();
+  }, []);
+
+  const loadEmployees = async () => {
+    const res = await employeeService.getActive();
+    if (res.success && res.data) {
+      setEmployees(res.data.data);
+    }
+    setLoading(false);
+  };
 
   const calculateDays = () => {
     if (!startDate || !endDate) return 0;
@@ -47,7 +59,7 @@ export default function NewLeavePage() {
     const res = await leaveService.create({
       employeeId: selectedEmployee,
       companyId: 'demo-company',
-      type: leaveType as any,
+      type: leaveType as LeaveType,
       startDate,
       endDate,
       daysCount: calculateDays(),
@@ -69,7 +81,7 @@ export default function NewLeavePage() {
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center gap-4">
         <button onClick={() => router.back()} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-          <ArrowLeft className="h-5 w-5 text-gray-600" />
+          <ArrowLeft className={`h-5 w-5 text-gray-600 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
         </button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -99,9 +111,11 @@ export default function NewLeavePage() {
                 required
               >
                 <option value="">
-                  {t('Select employee...', 'اختر موظف...', language)}
+                  {loading
+                    ? t('Loading...', 'جار التحميل...', language)
+                    : t('Select employee...', 'اختر موظف...', language)}
                 </option>
-                {employeeList.map((emp) => (
+                {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
                     {emp.employeeId} - {language === 'ar' ? emp.fullNameAr || emp.fullName : emp.fullName}
                   </option>
@@ -118,7 +132,7 @@ export default function NewLeavePage() {
                 onChange={(e) => setLeaveType(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
               >
-                {['annual', 'sick', 'personal', 'emergency', 'maternity', 'paternity', 'hajj', 'unpaid'].map(
+                {(['annual', 'sick', 'personal', 'emergency', 'maternity', 'paternity', 'hajj', 'unpaid'] as const).map(
                   (type) => (
                     <option key={type} value={type}>
                       {getLeaveTypeLabel(type, language)}

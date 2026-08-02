@@ -8,15 +8,16 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { DataTable, Column } from '@/engines/table-engine';
 import { payrollService } from '@/modules/payroll/service';
-import { Payroll } from '@/types';
+import { employeeService } from '@/modules/employee-management/service';
+import { Employee, Payroll } from '@/types';
 import { t, formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
 import { DollarSign, Play, Download, FileText, ExternalLink } from 'lucide-react';
-import { employees } from '@/lib/mock-data';
 
 export default function PayrollPage() {
   const { language, dir } = useLanguageStore();
   const [payrolls, setPayrolls] = React.useState<Payroll[]>([]);
+  const [employees, setEmployees] = React.useState<Map<string, Employee>>(new Map());
   const [loading, setLoading] = React.useState(true);
   const [processing, setProcessing] = React.useState(false);
   const { addToast } = useToast();
@@ -26,13 +27,19 @@ export default function PayrollPage() {
   });
 
   React.useEffect(() => {
-    loadPayrolls();
+    loadData();
   }, []);
 
-  const loadPayrolls = async () => {
+  const loadData = async () => {
     setLoading(true);
-    const res = await payrollService.list();
-    if (res.success && res.data) setPayrolls(res.data.data);
+    const [payrollRes, empRes] = await Promise.all([
+      payrollService.list(),
+      employeeService.getActive(),
+    ]);
+    if (payrollRes.success && payrollRes.data) setPayrolls(payrollRes.data.data);
+    if (empRes.success && empRes.data) {
+      setEmployees(new Map(empRes.data.data.map((e) => [e.id, e])));
+    }
     setLoading(false);
   };
 
@@ -45,7 +52,7 @@ export default function PayrollPage() {
           `تمت معالجة الرواتب! ${res.data.count} موظف. الأخطاء: ${res.data.errors.length}`,
           language
         ) });
-      loadPayrolls();
+      loadData();
     }
     setProcessing(false);
   };
