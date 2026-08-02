@@ -1,8 +1,5 @@
 import { Attendance, AttendanceStatus } from '@/types';
-import { generateId } from '@/lib/utils';
-import { employees } from '@/lib/mock-data';
-
-let attendanceRecords: Map<string, Attendance> = new Map();
+import { employees, attendanceRecords, addAttendance } from '@/lib/mock-data';
 
 function resolveEmployeeId(employeeId: string): string | null {
   if (employees.has(employeeId)) return employeeId;
@@ -41,16 +38,14 @@ export function clockIn(employeeId: string): { success: boolean; record?: Attend
   const time = `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   const status: AttendanceStatus = hour >= 9 ? (hour === 9 && minutes <= 15 ? 'present' : 'late') : 'present';
 
-  const record: Attendance = {
-    id: generateId(),
+  const record = addAttendance({
     employeeId: resolved,
     companyId: 'demo-company',
     date: today,
     clockIn: time,
     status,
-  };
+  });
 
-  attendanceRecords.set(record.id, record);
   return { success: true, record };
 }
 

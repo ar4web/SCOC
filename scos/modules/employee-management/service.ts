@@ -1,24 +1,12 @@
-import { api } from '@/lib/api';
-import { Employee, PaginatedResponse } from '@/types';
+import { employees, addEmployee } from '@/lib/mock-data';
+import { Employee } from '@/types';
 
-export const employeeService = {
-  list: (params?: { page?: number; pageSize?: number; search?: string; department?: string; status?: string }) => {
-    const query = new URLSearchParams();
-    if (params?.page) query.set('page', params.page.toString());
-    if (params?.pageSize) query.set('pageSize', params.pageSize.toString());
-    if (params?.search) query.set('search', params.search);
-    if (params?.department) query.set('department', params.department);
-    if (params?.status) query.set('status', params.status);
-    return api.get<PaginatedResponse<Employee>>(`/employees?${query.toString()}`);
-  },
+export function getAllEmployees(): Employee[] {
+  return Array.from(employees.values());
+}
 
-  getById: (id: string) => api.get<Employee>(`/employees/${id}`),
-
-  getActive: () => api.get<PaginatedResponse<Employee>>('/employees?status=active&pageSize=1000'),
-
-  create: (data: Omit<Employee, 'id' | 'employeeId' | 'createdAt' | 'updatedAt'>) =>
-    api.post<Employee>('/employees', data),
-
-  update: (id: string, data: Partial<Employee>) =>
-    api.put<Employee>(`/employees/${id}`, data),
-};
+export function createEmployee(
+  data: Omit<Employee, 'id' | 'employeeId' | 'createdAt' | 'updatedAt'>
+): Employee {
+  return addEmployee(data);
+}

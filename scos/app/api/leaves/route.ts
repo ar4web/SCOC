@@ -1,27 +1,40 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { leaves, addLeave } from '@/lib/mock-data';
+import { NextResponse } from 'next/server';
+import { getAllLeaves, createLeaveRequest } from '@/modules/leave-management/service';
+import { LeaveRequest } from '@/types';
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const employeeId = searchParams.get('employeeId');
-  const status = searchParams.get('status');
-
-  let list = Array.from(leaves.values());
-
-  if (employeeId) list = list.filter((l) => l.employeeId === employeeId);
-  if (status) list = list.filter((l) => l.status === status);
-
-  list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  return NextResponse.json({ data: list, total: list.length });
+export async function GET() {
+  const data = getAllLeaves();
+  return NextResponse.json({ data, total: data.length });
 }
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const leave = addLeave({
-    ...body,
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  if (
+    !body ||
+    typeof body !== 'object' ||
+    !body.employeeId ||
+    !body.type ||
+    !body.startDate ||
+    !body.endDate
+  ) {
+    return NextResponse.json({ error: 'employeeId, type, startDate and endDate are required' }, { status: 400 });
+  }
+
+  const leave = createLeaveRequest({
+    employeeId: String(body.employeeId),
     companyId: 'demo-company',
-    status: 'pending',
+    type: String(body.type) as LeaveRequest['type'],
+    startDate: String(body.startDate),
+    endDate: String(body.endDate),
+    reason: String(body.reason || ''),
+    attachments: [],
   });
+
   return NextResponse.json(leave, { status: 201 });
 }

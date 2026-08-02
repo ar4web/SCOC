@@ -11,11 +11,10 @@ import { DataTable, Column } from '@/engines/table-engine';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
 import { LeaveCalendar } from '@/components/modules/LeaveCalendar';
-import { leaveService } from '@/modules/leave-management/service';
-import { employeeService } from '@/modules/employee-management/service';
+import { api } from '@/lib/api';
 import { Employee, LeaveRequest } from '@/types';
 import { t, formatDate, getLeaveTypeLabel } from '@/lib/utils';
-import { Calendar, Plus, CheckCircle2, XCircle, List, Clock } from 'lucide-react';
+import { Calendar, Plus, CheckCircle2, XCircle, List, Clock, Loader2 } from 'lucide-react';
 
 export default function LeavesPage() {
   const { language, dir } = useLanguageStore();
@@ -27,15 +26,11 @@ export default function LeavesPage() {
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [tab, setTab] = React.useState<'list' | 'calendar'>('list');
 
-  React.useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
     setLoading(true);
     const [leaveRes, empRes] = await Promise.all([
-      leaveService.list(),
-      employeeService.getActive(),
+      api.get<{ data: LeaveRequest[]; total: number }>('/leaves'),
+      api.get<{ data: Employee[]; total: number }>('/employees'),
     ]);
     if (leaveRes.success && leaveRes.data) {
       setLeaves(leaveRes.data.data);
@@ -46,20 +41,28 @@ export default function LeavesPage() {
     setLoading(false);
   };
 
+  React.useEffect(() => {
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const isManager = user?.role === 'admin' || user?.role === 'hr_manager';
 
-  const handleAction = async (leave: LeaveRequest, action: 'approve' | 'reject') => {
+  const handleAction = async (leave: LeaveRequest, status: 'approved' | 'rejected') => {
     setActionLoading(leave.id);
-    const res = action === 'approve'
-      ? await leaveService.approve(leave.id, user?.id || '')
-      : await leaveService.reject(leave.id, user?.id || '');
+    const res = await api.put<LeaveRequest>('/leaves', {
+      id: leave.id,
+      status,
+      approvedBy: user?.id || '',
+    });
 
     if (res.success) {
       addToast({
         type: 'success',
-        title: action === 'approve'
-          ? t('Leave approved', 'تمت الموافقة على الإجازة', language)
-          : t('Leave rejected', 'تم رفض الإجازة', language),
+        title:
+          status === 'approved'
+            ? t('Leave approved', 'تمت الموافقة على الإجازة', language)
+            : t('Leave rejected', 'تم رفض الإجازة', language),
       });
       loadData();
     } else {
@@ -68,16 +71,16 @@ export default function LeavesPage() {
     setActionLoading(null);
   };
 
-  const getEmployeeName = (leave: LeaveRequest) => {
+  const getEmployeeId = (leave: LeaveRequest) => {
     const emp = employees.get(leave.employeeId);
-    return emp ? (language === 'ar' ? emp.fullNameAr || emp.fullName : emp.fullName) : leave.employeeId;
+    return emp ? emp.employeeId : leave.employeeId;
   };
 
   const columns: Column<LeaveRequest>[] = [
     {
       key: 'employee',
-      header: t('Employee', 'الموظف', language),
-      render: (leave) => <span className="font-medium text-gray-900">{getEmployeeName(leave)}</span>,
+      header: t('Employee ID', 'رقم الموظف', language),
+      render: (leave) => <span className="font-medium text-gray-900">{getEmployeeId(leave)}</span>,
     },
     {
       key: 'type',
@@ -89,44 +92,50 @@ export default function LeavesPage() {
       header: t('Dates', 'التواريخ', language),
       render: (leave) => `${formatDate(leave.startDate)} - ${formatDate(leave.endDate)}`,
     },
-    { key: 'daysCount', header: t('Days', 'الأيام', language) },
+    { key: 'daysCount', header: t('Total Days', 'إجمالي الأيام', language) },
     {
       key: 'status',
       header: t('Status', 'الحالة', language),
       render: (leave) => <Badge status={leave.status} locale={language} />,
     },
     ...(isManager
-      ? [{
-          key: 'actions',
-          header: t('Actions', 'الإجراءات', language),
-          render: (leave: LeaveRequest) =>
-            leave.status === 'pending' ? (
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => handleAction(leave, 'approve')}
-                  disabled={actionLoading === leave.id}
-                  className="p-1.5 rounded-lg text-success hover:bg-success/10 transition-colors disabled:opacity-50"
-                  aria-label={t('Approve', 'موافقة', language)}
-                  title={t('Approve', 'موافقة', language)}
-                >
-                  <CheckCircle2 className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={() => handleAction(leave, 'reject')}
-                  disabled={actionLoading === leave.id}
-                  className="p-1.5 rounded-lg text-error hover:bg-error/10 transition-colors disabled:opacity-50"
-                  aria-label={t('Reject', 'رفض', language)}
-                  title={t('Reject', 'رفض', language)}
-                >
-                  <XCircle className="h-5 w-5" />
-                </button>
-              </div>
-            ) : (
-              <span className="text-xs text-gray-400">
-                {leave.approvedAt ? formatDate(leave.approvedAt) : '--'}
-              </span>
-            ),
-        } as Column<LeaveRequest>]
+      ? [
+          {
+            key: 'actions',
+            header: t('Actions', 'الإجراءات', language),
+            render: (leave: LeaveRequest) =>
+              leave.status === 'pending' ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleAction(leave, 'approved')}
+                    disabled={actionLoading === leave.id}
+                    className="p-1.5 rounded-lg text-success hover:bg-success/10 transition-colors disabled:opacity-50"
+                    aria-label={t('Approve', 'موافقة', language)}
+                    title={t('Approve', 'موافقة', language)}
+                  >
+                    {actionLoading === leave.id ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-5 w-5" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleAction(leave, 'rejected')}
+                    disabled={actionLoading === leave.id}
+                    className="p-1.5 rounded-lg text-error hover:bg-error/10 transition-colors disabled:opacity-50"
+                    aria-label={t('Reject', 'رفض', language)}
+                    title={t('Reject', 'رفض', language)}
+                  >
+                    <XCircle className="h-5 w-5" />
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs text-gray-400">
+                  {leave.approvedAt ? formatDate(leave.approvedAt) : '--'}
+                </span>
+              ),
+          } as Column<LeaveRequest>,
+        ]
       : []),
   ];
 
@@ -161,7 +170,7 @@ export default function LeavesPage() {
               }`}
             >
               <List className="h-4 w-4 inline mr-1" />
-              {t('List', 'قائمة', language)}
+              {t('All Requests', 'كل الطلبات', language)}
             </button>
             <button
               onClick={() => setTab('calendar')}
@@ -170,7 +179,7 @@ export default function LeavesPage() {
               }`}
             >
               <Calendar className="h-4 w-4 inline mr-1" />
-              {t('Calendar', 'التقويم', language)}
+              {t('Calendar View', 'عرض التقويم', language)}
             </button>
           </div>
           {pendingCount > 0 && (
@@ -205,9 +214,9 @@ export default function LeavesPage() {
               loading={loading}
               locale={language}
               dir={dir}
-              emptyMessage={t('No leave requests yet', 'لا توجد طلبات إجازات بعد', language)}
-              emptyMessageAr={t('No leave requests yet', 'لا توجد طلبات إجازات بعد', language)}
               getRowKey={(leave) => leave.id}
+              emptyMessage={t('No leave requests found', 'لم يتم العثور على طلبات إجازات', language)}
+              emptyMessageAr={t('No leave requests found', 'لم يتم العثور على طلبات إجازات', language)}
             />
           )}
         </CardBody>

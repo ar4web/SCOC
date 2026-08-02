@@ -6,11 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useLanguageStore } from '@/stores/language-store';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { DataTable, Column } from '@/engines/table-engine';
 import { employeeService } from '@/modules/employee-management/service';
 import { Employee } from '@/types';
-import { t } from '@/lib/utils';
+import { t, formatCurrency } from '@/lib/utils';
 import { Users, Plus, Eye } from 'lucide-react';
 
 export default function EmployeesPage() {
@@ -18,18 +17,15 @@ export default function EmployeesPage() {
   const { language, dir } = useLanguageStore();
   const [employees, setEmployees] = React.useState<Employee[]>([]);
   const [total, setTotal] = React.useState(0);
-  const [page, setPage] = React.useState(1);
-  const [search, setSearch] = React.useState('');
   const [loading, setLoading] = React.useState(true);
-  const pageSize = 10;
 
   React.useEffect(() => {
     loadEmployees();
-  }, [page, search]);
+  }, []);
 
   const loadEmployees = async () => {
     setLoading(true);
-    const res = await employeeService.list({ page, pageSize, search });
+    const res = await employeeService.list({ page: 1, pageSize: 1000 });
     if (res.success && res.data) {
       setEmployees(res.data.data);
       setTotal(res.data.total);
@@ -40,12 +36,12 @@ export default function EmployeesPage() {
   const columns: Column<Employee>[] = [
     {
       key: 'employeeId',
-      header: t('ID', 'الرقم', language),
+      header: t('Employee ID', 'رقم الموظف', language),
       render: (emp) => <span className="font-medium text-gray-900">{emp.employeeId}</span>,
     },
     {
       key: 'fullName',
-      header: t('Name', 'الاسم', language),
+      header: t('Full Name', 'الاسم الكامل', language),
       render: (emp) => (
         <div>
           <p className="font-medium text-gray-900">
@@ -56,11 +52,12 @@ export default function EmployeesPage() {
       ),
     },
     { key: 'department', header: t('Department', 'القسم', language) },
-    { key: 'position', header: t('Position', 'المنصب', language) },
+    { key: 'position', header: t('Role', 'الوظيفة', language) },
+    { key: 'nationality', header: t('Nationality', 'الجنسية', language) },
     {
-      key: 'status',
-      header: t('Status', 'الحالة', language),
-      render: (emp) => <Badge status={emp.status} locale={language} />,
+      key: 'total',
+      header: t('Total Salary', 'إجمالي الراتب', language),
+      render: (emp) => <span className="font-semibold text-gray-900">{formatCurrency(emp.salary.total)}</span>,
     },
     {
       key: 'actions',
@@ -76,8 +73,6 @@ export default function EmployeesPage() {
       ),
     },
   ];
-
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="space-y-6">
@@ -106,14 +101,8 @@ export default function EmployeesPage() {
             loading={loading}
             locale={language}
             dir={dir}
-            searchable
-            searchPlaceholder={t('Search employees...', 'بحث عن موظف...', language)}
-            onSearch={(query) => { setSearch(query); setPage(1); }}
             emptyMessage={t('No employees found', 'لم يتم العثور على موظفين', language)}
             emptyMessageAr={t('No employees found', 'لم يتم العثور على موظفين', language)}
-            page={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
             getRowKey={(emp) => emp.id}
             onRowClick={(emp) => {
               router.push(`/employees/${emp.id}`);

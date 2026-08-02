@@ -4,8 +4,6 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
 import { useLanguageStore } from '@/stores/language-store';
-import { useCompanyStore } from '@/stores/company-store';
-import { companies } from '@/lib/mock-data';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Globe, Building2, Eye, EyeOff } from 'lucide-react';
@@ -14,7 +12,6 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuthStore();
   const { language, setLanguage, dir } = useLanguageStore();
-  const { setCompany } = useCompanyStore();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
@@ -28,12 +25,6 @@ export default function LoginPage() {
 
     const result = await login(email, password);
     if (result.success) {
-      const token = localStorage.getItem('scos_token');
-      if (token) {
-        document.cookie = `scos_token=${token}; path=/; max-age=86400; SameSite=Lax`;
-      }
-      const company = companies.get('demo-company');
-      if (company) setCompany(company);
       router.push('/');
     } else {
       setError(result.error || 'Login failed');

@@ -1,6 +1,32 @@
 import { create } from 'zustand';
-import { User, Language } from '@/types';
-import { api } from '@/lib/api';
+import { User } from '@/types';
+import { authService } from '@/modules/auth/service';
+
+const TOKEN_KEY = 'scos_token';
+
+function getTokenFromStorage(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setTokenCookie(token: string) {
+  if (typeof window === 'undefined') return;
+  document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=86400; SameSite=Lax`;
+}
+
+function clearToken() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // ignore storage errors
+  }
+  document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; SameSite=Lax`;
+}
 
 interface AuthState {
   user: User | null;
@@ -19,32 +45,37 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
 
   login: async (email, password) => {
-    const res = await api.post<{ user: User; token: string }>('/auth/login', { email, password });
+    const res = await authService.login(email, password);
     if (res.success && res.data) {
-      localStorage.setItem('scos_token', res.data.token);
-      set({ user: res.data.user, token: res.data.token, isAuthenticated: true });
+      const { user, token } = res.data;
+      try {
+        localStorage.setItem(TOKEN_KEY, token);
+      } catch {
+        // ignore storage errors
+      }
+      setTokenCookie(token);
+      set({ user, token, isAuthenticated: true });
       return { success: true };
     }
     return { success: false, error: res.error };
   },
 
   logout: () => {
-    localStorage.removeItem('scos_token');
-    document.cookie = 'scos_token=; path=/; max-age=0; SameSite=Lax';
+    clearToken();
     set({ user: null, token: null, isAuthenticated: false });
   },
 
   checkAuth: async () => {
-    const token = localStorage.getItem('scos_token');
+    const token = getTokenFromStorage();
     if (!token) {
       set({ isLoading: false });
       return;
     }
-    const res = await api.get<{ user: User }>('/auth/me');
+    const res = await authService.me();
     if (res.success && res.data) {
       set({ user: res.data.user, token, isAuthenticated: true, isLoading: false });
     } else {
-      localStorage.removeItem('scos_token');
+      clearToken();
       set({ isLoading: false });
     }
   },

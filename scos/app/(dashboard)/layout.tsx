@@ -1,55 +1,52 @@
 'use client';
-
 import React from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCompanyStore } from '@/stores/company-store';
+import { useModuleStore } from '@/stores/module-store';
 import { useLanguageStore } from '@/stores/language-store';
-import { Header } from '@/components/layout/Header';
+import { useModuleGate } from '@/hooks/useModuleGate';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { PageTransition } from '@/components/PageTransition';
-import { companies } from '@/lib/mock-data';
-import { Loader2 } from 'lucide-react';
+import { Header } from '@/components/layout/Header';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, checkAuth } = useAuthStore();
-  const { setCompany } = useCompanyStore();
+  const { isAuthenticated, isLoading, checkAuth, user } = useAuthStore();
   const { setLanguage } = useLanguageStore();
+  const { fetchCompany } = useCompanyStore();
+  const { fetchModules } = useModuleStore();
+
+  useModuleGate();
 
   React.useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
   React.useEffect(() => {
-    if (user) {
-      const company = companies.get(user.companyId);
-      if (company) setCompany(company);
-      setLanguage(user.language || 'en');
+    if (isAuthenticated) {
+      fetchCompany();
+      fetchModules();
     }
-  }, [user, setCompany, setLanguage]);
+  }, [isAuthenticated, fetchCompany, fetchModules]);
+
+  React.useEffect(() => {
+    if (user?.language) {
+      setLanguage(user.language);
+    }
+  }, [user?.language, setLanguage]);
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="flex h-screen items-center justify-center text-gray-500">Loading...</div>;
   }
 
   if (!isAuthenticated) {
-    return <ErrorBoundary>{children}</ErrorBoundary>;
+    return <>{children}</>;
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
       <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col">
         <Header />
-        <main className="flex-1 overflow-y-auto p-6 scrollbar-thin">
-          <ErrorBoundary>
-            <PageTransition>{children}</PageTransition>
-          </ErrorBoundary>
-        </main>
+        <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   );

@@ -6,9 +6,8 @@ import { useLanguageStore } from '@/stores/language-store';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { leaveService } from '@/modules/leave-management/service';
-import { employeeService } from '@/modules/employee-management/service';
-import { Employee, LeaveType } from '@/types';
+import { api } from '@/lib/api';
+import { Employee } from '@/types';
 import { t, getLeaveTypeLabel } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
 import { CalendarDays, Save, ArrowLeft } from 'lucide-react';
@@ -16,6 +15,7 @@ import { CalendarDays, Save, ArrowLeft } from 'lucide-react';
 export default function NewLeavePage() {
   const router = useRouter();
   const { language, dir } = useLanguageStore();
+  const { addToast } = useToast();
   const [saving, setSaving] = React.useState(false);
   const [selectedEmployee, setSelectedEmployee] = React.useState('');
   const [leaveType, setLeaveType] = React.useState('annual');
@@ -24,14 +24,13 @@ export default function NewLeavePage() {
   const [reason, setReason] = React.useState('');
   const [employees, setEmployees] = React.useState<Employee[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const { addToast } = useToast();
 
   React.useEffect(() => {
     loadEmployees();
   }, []);
 
   const loadEmployees = async () => {
-    const res = await employeeService.getActive();
+    const res = await api.get<{ data: Employee[]; total: number }>('/employees');
     if (res.success && res.data) {
       setEmployees(res.data.data);
     }
@@ -56,26 +55,29 @@ export default function NewLeavePage() {
       return;
     }
 
-    const res = await leaveService.create({
+    const res = await api.post('/leaves', {
       employeeId: selectedEmployee,
-      companyId: 'demo-company',
-      type: leaveType as LeaveType,
+      type: leaveType,
       startDate,
       endDate,
-      daysCount: calculateDays(),
       reason,
-      status: 'pending',
-      attachments: [],
     });
 
     setSaving(false);
 
     if (res.success) {
+      addToast({
+        type: 'success',
+        title: t('Leave request submitted', 'تم إرسال طلب الإجازة', language),
+      });
       router.push('/leaves');
     } else {
       addToast({ type: 'error', title: res.error || t('Failed to create leave request', 'فشل في إنشاء طلب الإجازة', language) });
     }
   };
+
+  const selectClass =
+    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary';
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -107,7 +109,7 @@ export default function NewLeavePage() {
               <select
                 value={selectedEmployee}
                 onChange={(e) => setSelectedEmployee(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
+                className={selectClass}
                 required
               >
                 <option value="">
@@ -130,15 +132,13 @@ export default function NewLeavePage() {
               <select
                 value={leaveType}
                 onChange={(e) => setLeaveType(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
+                className={selectClass}
               >
-                {(['annual', 'sick', 'personal', 'emergency', 'maternity', 'paternity', 'hajj', 'unpaid'] as const).map(
-                  (type) => (
-                    <option key={type} value={type}>
-                      {getLeaveTypeLabel(type, language)}
-                    </option>
-                  )
-                )}
+                {(['annual', 'sick', 'unpaid', 'emergency'] as const).map((type) => (
+                  <option key={type} value={type}>
+                    {getLeaveTypeLabel(type, language)}
+                  </option>
+                ))}
               </select>
             </div>
 

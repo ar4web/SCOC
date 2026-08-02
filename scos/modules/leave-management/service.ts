@@ -1,20 +1,33 @@
-import { api } from '@/lib/api';
-import { LeaveRequest } from '@/types';
+import { leaves, addLeave } from '@/lib/mock-data';
+import { LeaveRequest, LeaveStatus } from '@/types';
 
-export const leaveService = {
-  list: (params?: { employeeId?: string; status?: string }) => {
-    const query = new URLSearchParams();
-    if (params?.employeeId) query.set('employeeId', params.employeeId);
-    if (params?.status) query.set('status', params.status);
-    return api.get<{ data: LeaveRequest[]; total: number }>(`/leaves?${query.toString()}`);
-  },
+export function getAllLeaves(): LeaveRequest[] {
+  return Array.from(leaves.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}
 
-  create: (data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt'>) =>
-    api.post<LeaveRequest>('/leaves', data),
+export function createLeaveRequest(
+  data: Omit<LeaveRequest, 'id' | 'daysCount' | 'status' | 'createdAt' | 'updatedAt'>
+): LeaveRequest {
+  const start = new Date(data.startDate);
+  const end = new Date(data.endDate);
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysCount = Math.max(0, Math.floor((end.getTime() - start.getTime()) / msPerDay) + 1);
 
-  approve: (id: string, approvedBy: string) =>
-    api.put<LeaveRequest>(`/leaves/${id}`, { action: 'approve', approvedBy }),
+  return addLeave({
+    ...data,
+    companyId: data.companyId || 'demo-company',
+    daysCount,
+    status: 'pending',
+    attachments: data.attachments || [],
+  });
+}
 
-  reject: (id: string, approvedBy: string) =>
-    api.put<LeaveRequest>(`/leaves/${id}`, { action: 'reject', approvedBy }),
-};
+export function updateLeaveStatus(id: string, status: LeaveStatus): LeaveRequest | undefined {
+  const leave = leaves.get(id);
+  if (!leave) return undefined;
+  leave.status = status;
+  leave.updatedAt = new Date().toISOString();
+  return leave;
+}

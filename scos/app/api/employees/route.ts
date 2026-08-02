@@ -1,45 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { employees, addEmployee } from '@/lib/mock-data';
+import { NextResponse } from 'next/server';
 import { Employee } from '@/types';
+import { getAllEmployees, createEmployee } from '@/modules/employee-management/service';
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const search = searchParams.get('search')?.toLowerCase();
-  const department = searchParams.get('department');
-  const status = searchParams.get('status');
-  const page = parseInt(searchParams.get('page') || '1');
-  const pageSize = parseInt(searchParams.get('pageSize') || '10');
-
-  let list = Array.from(employees.values());
-
-  if (search) {
-    list = list.filter(
-      (e) =>
-        e.fullName.toLowerCase().includes(search) ||
-        e.employeeId.toLowerCase().includes(search) ||
-        e.email.toLowerCase().includes(search)
-    );
-  }
-  if (department) {
-    list = list.filter((e) => e.department === department);
-  }
-  if (status) {
-    list = list.filter((e) => e.status === status);
-  }
-
-  const total = list.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const data = list.slice(start, start + pageSize);
-
-  return NextResponse.json({ data, total, page, pageSize, totalPages });
+export async function GET() {
+  const data = getAllEmployees();
+  return NextResponse.json({ data, total: data.length });
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as Omit<Employee, 'id' | 'employeeId' | 'createdAt' | 'updatedAt'>;
-  const employee = addEmployee({
+  let body: Omit<Employee, 'id' | 'employeeId' | 'createdAt' | 'updatedAt'>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  if (!body || typeof body !== 'object' || !body.fullName || !body.email) {
+    return NextResponse.json({ error: 'fullName and email are required' }, { status: 400 });
+  }
+
+  const employee = createEmployee({
     ...body,
     companyId: 'demo-company',
   });
+
   return NextResponse.json(employee, { status: 201 });
 }

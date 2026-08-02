@@ -1,18 +1,16 @@
 import { useAuthStore } from '@/stores/auth-store';
 import { useCompanyStore } from '@/stores/company-store';
 import { useEffect } from 'react';
-import { companies } from '@/lib/mock-data';
 
 export function useCompany() {
   const { user } = useAuthStore();
-  const { company, setCompany } = useCompanyStore();
+  const { company, isLoading, setCompany, fetchCompany } = useCompanyStore();
 
   useEffect(() => {
-    if (user && !company) {
-      const c = companies.get(user.companyId);
-      if (c) setCompany(c);
+    if (user && !company && !isLoading) {
+      fetchCompany();
     }
-  }, [user, company, setCompany]);
+  }, [user, company, isLoading, fetchCompany]);
 
-  return { company };
+  return { company, isLoading };
 }

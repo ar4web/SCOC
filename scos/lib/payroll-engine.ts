@@ -1,9 +1,6 @@
-import { employees, companies } from '@/lib/mock-data';
+import { employees, companies, payrolls, addPayroll } from '@/lib/mock-data';
 import { Payroll, PayrollStatus, Deduction, Addition } from '@/types';
 import { generateId } from '@/lib/utils';
-
-let payrolls: Map<string, Payroll> = new Map();
-let payrollCounter = 0;
 
 export interface GOSIRate {
   id: string;
@@ -115,8 +112,7 @@ export function processPayroll(period: string): { success: boolean; count: numbe
     ];
     const netPay = Math.round(total - gosiEmployee);
 
-    const payroll: Payroll = {
-      id: generateId(),
+    const payroll = {
       companyId: 'demo-company',
       period,
       employeeId: emp.id,
@@ -129,9 +125,9 @@ export function processPayroll(period: string): { success: boolean; count: numbe
       netPay,
       status: 'completed',
       processedAt: new Date().toISOString(),
-    };
+    } satisfies Omit<Payroll, 'id'>;
 
-    payrolls.set(payroll.id, payroll);
+    addPayroll(payroll);
     count++;
   }
 

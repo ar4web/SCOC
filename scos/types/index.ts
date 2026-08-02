@@ -1,3 +1,6 @@
+export type Language = 'en' | 'ar';
+export type UserRole = 'admin' | 'hr_manager' | 'manager' | 'employee';
+
 export interface User {
   id: string;
   email: string;
@@ -9,34 +12,14 @@ export interface User {
   language: Language;
 }
 
-export type UserRole = 'admin' | 'hr_manager' | 'manager' | 'employee';
+export type ThemeVariant = 'light' | 'dark' | 'auto';
 
-export type Language = 'en' | 'ar';
-
-export interface Company {
-  id: string;
-  name: string;
-  nameAr?: string;
-  taxNumber: string;
-  industry: string;
-  employeeCount: number;
-  establishedDate: string;
-  settings: CompanySettings;
-  branding: Branding;
-  moduleStates: ModuleStates;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CompanySettings {
-  workWeek: WorkWeek;
-  weekendDays: number[];
-  holidays: Holiday[];
-  leavePolicies: LeavePolicy[];
-  workingHours: { start: string; end: string };
-  overtimeRate: number;
-  gosiEnabled: boolean;
-  wpsEnabled: boolean;
+export interface Branding {
+  logo?: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  theme: ThemeVariant;
 }
 
 export interface WorkWeek {
@@ -54,18 +37,44 @@ export interface Holiday {
   isRecurring: boolean;
 }
 
-export interface Branding {
-  logo?: string;
-  primaryColor: string;
-  secondaryColor: string;
-  accentColor: string;
-  theme: ThemeVariant;
+export type LeaveType = 'annual' | 'sick' | 'personal' | 'emergency' | 'maternity' | 'paternity' | 'hajj' | 'unpaid';
+
+export interface LeavePolicy {
+  type: LeaveType;
+  daysPerYear: number;
+  carryoverDays: number;
+  requiresApproval: boolean;
+  paid: boolean;
 }
 
-export type ThemeVariant = 'light' | 'dark' | 'auto';
+export interface CompanySettings {
+  workWeek: WorkWeek;
+  weekendDays: number[];
+  holidays: Holiday[];
+  leavePolicies: LeavePolicy[];
+  workingHours: { start: string; end: string };
+  overtimeRate: number;
+  gosiEnabled: boolean;
+  wpsEnabled: boolean;
+}
 
 export interface ModuleStates {
   [key: string]: boolean;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  nameAr?: string;
+  taxNumber: string;
+  industry: string;
+  employeeCount: number;
+  establishedDate: string;
+  settings: CompanySettings;
+  branding: Branding;
+  moduleStates: ModuleStates;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ModuleDefinition {
@@ -80,35 +89,12 @@ export interface ModuleDefinition {
   route: string;
 }
 
-export interface Employee {
+export interface Department {
   id: string;
-  employeeId: string;
-  companyId: string;
-  userId?: string;
-  fullName: string;
-  fullNameAr: string;
-  email: string;
-  phone: string;
-  nationalId: string;
-  iqamaNumber?: string;
-  nationality: string;
-  religion: 'muslim' | 'other';
-  gender: 'male' | 'female';
-  maritalStatus: 'single' | 'married' | 'divorced' | 'widowed';
-  dateOfBirth: string;
-  hireDate: string;
-  contractType: ContractType;
-  contractEndDate?: string;
-  department: string;
-  position: string;
+  name: string;
+  nameAr: string;
   managerId?: string;
-  salary: SalaryInfo;
-  address: Address;
-  emergencyContact: EmergencyContact;
-  status: EmployeeStatus;
-  documents: Document[];
-  createdAt: string;
-  updatedAt: string;
+  employeeCount: number;
 }
 
 export type ContractType = 'permanent' | 'fixed_term' | 'part_time' | 'probation';
@@ -147,6 +133,39 @@ export interface Document {
   uploadedAt: string;
 }
 
+export interface Employee {
+  id: string;
+  employeeId: string;
+  companyId: string;
+  userId?: string;
+  fullName: string;
+  fullNameAr: string;
+  email: string;
+  phone: string;
+  nationalId: string;
+  iqamaNumber?: string;
+  nationality: string;
+  religion: 'muslim' | 'other';
+  gender: 'male' | 'female';
+  maritalStatus: 'single' | 'married' | 'divorced' | 'widowed';
+  dateOfBirth: string;
+  hireDate: string;
+  contractType: ContractType;
+  contractEndDate?: string;
+  department: string;
+  position: string;
+  managerId?: string;
+  salary: SalaryInfo;
+  address: Address;
+  emergencyContact: EmergencyContact;
+  status: EmployeeStatus;
+  documents: Document[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
 export interface LeaveRequest {
   id: string;
   employeeId: string;
@@ -164,16 +183,7 @@ export interface LeaveRequest {
   updatedAt: string;
 }
 
-export type LeaveType = 'annual' | 'sick' | 'personal' | 'emergency' | 'maternity' | 'paternity' | 'hajj' | 'unpaid';
-export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
-
-export interface LeavePolicy {
-  type: LeaveType;
-  daysPerYear: number;
-  carryoverDays: number;
-  requiresApproval: boolean;
-  paid: boolean;
-}
+export type AttendanceStatus = 'present' | 'late' | 'absent' | 'half_day' | 'overtime';
 
 export interface Attendance {
   id: string;
@@ -186,7 +196,19 @@ export interface Attendance {
   notes?: string;
 }
 
-export type AttendanceStatus = 'present' | 'late' | 'absent' | 'half_day' | 'overtime';
+export type PayrollStatus = 'draft' | 'processing' | 'completed' | 'cancelled';
+
+export interface Deduction {
+  type: string;
+  amount: number;
+  description: string;
+}
+
+export interface Addition {
+  type: string;
+  amount: number;
+  description: string;
+}
 
 export interface Payroll {
   id: string;
@@ -202,19 +224,65 @@ export interface Payroll {
   processedAt?: string;
 }
 
-export interface Deduction {
-  type: string;
-  amount: number;
-  description: string;
+export interface GOSIRate {
+  id: string;
+  label: string;
+  labelAr: string;
+  employee: number;
+  employer: number;
+  note: string;
+  noteAr: string;
+  saudiOnly?: boolean;
 }
 
-export interface Addition {
-  type: string;
-  amount: number;
-  description: string;
+export interface GOSIBreakdown {
+  applicableWage: number;
+  isSaudi: boolean;
+  rows: {
+    id: string;
+    label: string;
+    labelAr: string;
+    note: string;
+    noteAr: string;
+    employeeShare: number;
+    employerShare: number;
+  }[];
+  totalEmployee: number;
+  totalEmployer: number;
+  total: number;
 }
 
-export type PayrollStatus = 'draft' | 'processing' | 'completed' | 'cancelled';
+export interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  timestamp: string;
+}
+
+export type AnnouncementPriority = 'normal' | 'high' | 'urgent';
+
+export interface Announcement {
+  id: string;
+  title: string;
+  titleAr: string;
+  content: string;
+  contentAr: string;
+  author: string;
+  createdAt: string;
+  priority: AnnouncementPriority;
+}
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  details: string;
+  timestamp: string;
+}
+
+export type NotificationType = 'info' | 'success' | 'warning' | 'error';
 
 export interface Notification {
   id: string;
@@ -229,8 +297,6 @@ export interface Notification {
   link?: string;
   createdAt: string;
 }
-
-export type NotificationType = 'info' | 'success' | 'warning' | 'error';
 
 export interface PaginationParams {
   page: number;

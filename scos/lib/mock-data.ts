@@ -5,6 +5,14 @@ import {
   LeaveRequest,
   ModuleDefinition,
   Notification,
+  Message,
+  Announcement,
+  AuditLog,
+  Attendance,
+  Payroll,
+  Department,
+  CompanySettings,
+  Branding,
 } from '@/types';
 import { generateId, formatEmployeeId } from './utils';
 
@@ -96,6 +104,25 @@ export let leaves: Map<string, LeaveRequest> = new Map();
 
 export let notifications: Map<string, Notification> = new Map();
 
+export let attendanceRecords: Map<string, Attendance> = new Map();
+
+export let payrolls: Map<string, Payroll> = new Map();
+
+export let messages: Map<string, Message> = new Map();
+
+export let announcements: Map<string, Announcement> = new Map();
+
+export let auditLogs: Map<string, AuditLog> = new Map();
+
+export let departments: Department[] = [
+  { id: 'dept-1', name: 'Engineering', nameAr: 'الهندسة', employeeCount: 0 },
+  { id: 'dept-2', name: 'Marketing', nameAr: 'التسويق', employeeCount: 0 },
+  { id: 'dept-3', name: 'Finance', nameAr: 'المالية', employeeCount: 0 },
+  { id: 'dept-4', name: 'HR', nameAr: 'الموارد البشرية', employeeCount: 0 },
+  { id: 'dept-5', name: 'Operations', nameAr: 'العمليات', employeeCount: 0 },
+  { id: 'dept-6', name: 'Sales', nameAr: 'المبيعات', employeeCount: 0 },
+];
+
 export const moduleDefinitions: ModuleDefinition[] = [
   {
     id: 'employee-management',
@@ -176,6 +203,41 @@ export const moduleDefinitions: ModuleDefinition[] = [
   },
 ];
 
+export function getCompany(): Company | undefined {
+  return companies.get('demo-company');
+}
+
+export function updateCompany(updates: Partial<Company>): Company | undefined {
+  const company = companies.get('demo-company');
+  if (!company) return undefined;
+  Object.assign(company, updates, { updatedAt: new Date().toISOString() });
+  return company;
+}
+
+export function updateCompanySettings(settings: Partial<CompanySettings>): Company | undefined {
+  const company = companies.get('demo-company');
+  if (!company) return undefined;
+  company.settings = { ...company.settings, ...settings };
+  company.updatedAt = new Date().toISOString();
+  return company;
+}
+
+export function updateCompanyBranding(branding: Branding): Company | undefined {
+  const company = companies.get('demo-company');
+  if (!company) return undefined;
+  company.branding = branding;
+  company.updatedAt = new Date().toISOString();
+  return company;
+}
+
+export function setModuleStates(states: Record<string, boolean>): Company | undefined {
+  const company = companies.get('demo-company');
+  if (!company) return undefined;
+  company.moduleStates = states;
+  company.updatedAt = new Date().toISOString();
+  return company;
+}
+
 export function addEmployee(data: Omit<Employee, 'id' | 'employeeId' | 'createdAt' | 'updatedAt'>): Employee {
   employeeCounter++;
   const total = data.salary.basic + data.salary.housing + data.salary.transportation + data.salary.otherAllowances;
@@ -192,6 +254,8 @@ export function addEmployee(data: Omit<Employee, 'id' | 'employeeId' | 'createdA
   if (company) {
     company.employeeCount = employees.size;
   }
+  const dept = departments.find((d) => d.name === data.department);
+  if (dept) dept.employeeCount += 1;
   return employee;
 }
 
@@ -216,25 +280,59 @@ export function addNotification(notification: Omit<Notification, 'id' | 'created
   return n;
 }
 
-export function seedDemoData() {
+export function addAttendance(record: Omit<Attendance, 'id'>): Attendance {
+  const r: Attendance = { ...record, id: generateId() };
+  attendanceRecords.set(r.id, r);
+  return r;
+}
+
+export function addPayroll(record: Omit<Payroll, 'id'>): Payroll {
+  const p: Payroll = { ...record, id: generateId() };
+  payrolls.set(p.id, p);
+  return p;
+}
+
+export function addMessage(data: Omit<Message, 'id' | 'timestamp'>): Message {
+  const m: Message = { ...data, id: generateId(), timestamp: new Date().toISOString() };
+  messages.set(m.id, m);
+  return m;
+}
+
+export function addAnnouncement(data: Omit<Announcement, 'id' | 'createdAt'>): Announcement {
+  const a: Announcement = { ...data, id: generateId(), createdAt: new Date().toISOString() };
+  announcements.set(a.id, a);
+  return a;
+}
+
+export function addAuditLog(userId: string, userName: string, action: string, details: string): AuditLog {
+  const log: AuditLog = {
+    id: generateId(),
+    userId,
+    userName,
+    action,
+    details,
+    timestamp: new Date().toISOString(),
+  };
+  auditLogs.set(log.id, log);
+  return log;
+}
+
+function seedDemoData() {
   if (employees.size > 0) return;
 
-  const departments = ['Engineering', 'Marketing', 'Finance', 'HR', 'Operations', 'Sales'];
-  const positions = ['Manager', 'Senior Specialist', 'Specialist', 'Coordinator', 'Analyst', 'Associate'];
-
   const demoEmployees = [
-    { fullName: 'Ahmed Al-Saud', fullNameAr: 'أحمد آل سعود', email: 'ahmed@scos.sa', phone: '+966501234561', nationalId: '1012345678', department: 'Engineering', position: 'Senior Manager', contractType: 'permanent' as const, basic: 25000, housing: 10000, transport: 3000 },
-    { fullName: 'Sara Al-Qahtani', fullNameAr: 'سارة القحطاني', email: 'sara@scos.sa', phone: '+966501234562', nationalId: '1023456789', department: 'Marketing', position: 'Marketing Manager', contractType: 'permanent' as const, basic: 20000, housing: 8000, transport: 2500 },
-    { fullName: 'Mohammed Al-Otaibi', fullNameAr: 'محمد العتيبي', email: 'mohammed@scos.sa', phone: '+966501234563', nationalId: '1034567890', department: 'Finance', position: 'Financial Analyst', contractType: 'fixed_term' as const, basic: 15000, housing: 6000, transport: 2000 },
-    { fullName: 'Nora Al-Harbi', fullNameAr: 'نورة الحربي', email: 'nora@scos.sa', phone: '+966501234564', nationalId: '1045678901', department: 'HR', position: 'HR Specialist', contractType: 'permanent' as const, basic: 14000, housing: 5000, transport: 2000 },
-    { fullName: 'Fahad Al-Dosari', fullNameAr: 'فهد الدوسري', email: 'fahad@scos.sa', phone: '+966501234565', nationalId: '1056789012', department: 'Operations', position: 'Operations Coordinator', contractType: 'probation' as const, basic: 10000, housing: 4000, transport: 1500 },
-    { fullName: 'Lama Al-Shammari', fullNameAr: 'لمى الشمري', email: 'lama@scos.sa', phone: '+966501234566', nationalId: '1067890123', department: 'Sales', position: 'Sales Executive', contractType: 'permanent' as const, basic: 12000, housing: 5000, transport: 2000 },
-    { fullName: 'Khalid Al-Ghamdi', fullNameAr: 'خالد الغامدي', email: 'khalid@scos.sa', phone: '+966501234567', nationalId: '1078901234', department: 'Engineering', position: 'Software Engineer', contractType: 'fixed_term' as const, basic: 18000, housing: 7000, transport: 2500 },
-    { fullName: 'Hessa Al-Zahrani', fullNameAr: 'حصه الزهراني', email: 'hessa@scos.sa', phone: '+966501234568', nationalId: '1089012345', department: 'Marketing', position: 'Content Specialist', contractType: 'permanent' as const, basic: 11000, housing: 4000, transport: 1500 },
+    { fullName: 'Ahmed Al-Saud', fullNameAr: 'أحمد آل سعود', email: 'ahmed@scos.sa', phone: '+966501234561', nationalId: '1012345678', gender: 'male' as const, maritalStatus: 'married' as const, dateOfBirth: '1985-03-14', hireDate: '2020-01-15', department: 'Engineering', position: 'Senior Manager', contractType: 'permanent' as const, basic: 25000, housing: 10000, transport: 3000, managerId: undefined, bankName: 'Al Rajhi Bank', bankAccount: 'SA0123456789001234567890' },
+    { fullName: 'Sara Al-Qahtani', fullNameAr: 'سارة القحطاني', email: 'sara@scos.sa', phone: '+966501234562', nationalId: '1023456789', gender: 'female' as const, maritalStatus: 'single' as const, dateOfBirth: '1991-07-22', hireDate: '2021-03-01', department: 'Marketing', position: 'Marketing Manager', contractType: 'permanent' as const, basic: 20000, housing: 8000, transport: 2500, managerId: undefined, bankName: 'Riyad Bank', bankAccount: 'SA0123456789001234567891' },
+    { fullName: 'Mohammed Al-Otaibi', fullNameAr: 'محمد العتيبي', email: 'mohammed@scos.sa', phone: '+966501234563', nationalId: '1034567890', gender: 'male' as const, maritalStatus: 'single' as const, dateOfBirth: '1993-11-05', hireDate: '2022-06-01', department: 'Finance', position: 'Financial Analyst', contractType: 'fixed_term' as const, basic: 15000, housing: 6000, transport: 2000, managerId: undefined, bankName: 'Al Rajhi Bank', bankAccount: 'SA0123456789001234567892' },
+    { fullName: 'Nora Al-Harbi', fullNameAr: 'نورة الحربي', email: 'nora@scos.sa', phone: '+966501234564', nationalId: '1045678901', gender: 'female' as const, maritalStatus: 'married' as const, dateOfBirth: '1988-09-30', hireDate: '2021-01-10', department: 'HR', position: 'HR Specialist', contractType: 'permanent' as const, basic: 14000, housing: 5000, transport: 2000, managerId: undefined, bankName: 'Saudi British Bank', bankAccount: 'SA0123456789001234567893' },
+    { fullName: 'Fahad Al-Dosari', fullNameAr: 'فهد الدوسري', email: 'fahad@scos.sa', phone: '+966501234565', nationalId: '1056789012', gender: 'male' as const, maritalStatus: 'single' as const, dateOfBirth: '1996-02-18', hireDate: '2023-09-01', department: 'Operations', position: 'Operations Coordinator', contractType: 'probation' as const, basic: 10000, housing: 4000, transport: 1500, managerId: undefined, bankName: 'Alinma Bank', bankAccount: 'SA0123456789001234567894' },
+    { fullName: 'Lama Al-Shammari', fullNameAr: 'لمى الشمري', email: 'lama@scos.sa', phone: '+966501234566', nationalId: '1067890123', gender: 'female' as const, maritalStatus: 'single' as const, dateOfBirth: '1994-05-12', hireDate: '2022-02-14', department: 'Sales', position: 'Sales Executive', contractType: 'permanent' as const, basic: 12000, housing: 5000, transport: 2000, managerId: undefined, bankName: 'Bank Albilad', bankAccount: 'SA0123456789001234567895' },
+    { fullName: 'Khalid Al-Ghamdi', fullNameAr: 'خالد الغامدي', email: 'khalid@scos.sa', phone: '+966501234567', nationalId: '1078901234', gender: 'male' as const, maritalStatus: 'married' as const, dateOfBirth: '1990-01-25', hireDate: '2020-05-20', department: 'Engineering', position: 'Software Engineer', contractType: 'fixed_term' as const, basic: 18000, housing: 7000, transport: 2500, managerId: undefined, bankName: 'Al Rajhi Bank', bankAccount: 'SA0123456789001234567896' },
+    { fullName: 'Hessa Al-Zahrani', fullNameAr: 'حصه الزهراني', email: 'hessa@scos.sa', phone: '+966501234568', nationalId: '1089012345', gender: 'female' as const, maritalStatus: 'single' as const, dateOfBirth: '1997-08-08', hireDate: '2023-01-05', department: 'Marketing', position: 'Content Specialist', contractType: 'permanent' as const, basic: 11000, housing: 4000, transport: 1500, managerId: undefined, bankName: 'Riyad Bank', bankAccount: 'SA0123456789001234567897' },
   ];
 
   for (const emp of demoEmployees) {
-    addEmployee({
+    const created = addEmployee({
       companyId: 'demo-company',
       fullName: emp.fullName,
       fullNameAr: emp.fullNameAr,
@@ -243,35 +341,36 @@ export function seedDemoData() {
       nationalId: emp.nationalId,
       nationality: 'Saudi',
       religion: 'muslim',
-      gender: emp.fullName.includes('Sara') || emp.fullName.includes('Nora') || emp.fullName.includes('Lama') || emp.fullName.includes('Hessa') ? 'female' : 'male',
-      maritalStatus: 'single',
-      dateOfBirth: '1990-06-15',
-      hireDate: '2022-01-01',
+      gender: emp.gender,
+      maritalStatus: emp.maritalStatus,
+      dateOfBirth: emp.dateOfBirth,
+      hireDate: emp.hireDate,
       contractType: emp.contractType,
       department: emp.department,
       position: emp.position,
+      managerId: emp.managerId,
       salary: {
         basic: emp.basic,
         housing: emp.housing,
         transportation: emp.transport,
         otherAllowances: 0,
         total: emp.basic + emp.housing + emp.transport,
-        bankName: 'Al Rajhi Bank',
-        bankAccount: 'SA0123456789001234567890',
-        iban: 'SA0123456789001234567890',
+        bankName: emp.bankName,
+        bankAccount: emp.bankAccount,
+        iban: emp.bankAccount,
       },
       address: { street: 'King Fahd Road', city: 'Riyadh', region: 'Riyadh', postalCode: '12345', country: 'Saudi Arabia' },
       emergencyContact: { name: 'Family Member', relation: 'Spouse', phone: '+966501234569' },
       status: 'active',
       documents: [],
     });
+    void created;
   }
 
   const seeded = Array.from(employees.values());
   if (seeded[0]) seeded[0].userId = 'user-1';
   if (seeded[1]) seeded[1].userId = 'user-2';
 
-  // Seed some leave requests
   const empEntries = Array.from(employees.values());
   if (empEntries.length >= 2) {
     addLeave({
@@ -300,10 +399,16 @@ export function seedDemoData() {
     });
   }
 
-  // Seed sample notifications
   addNotification({ companyId: 'demo-company', userId: 'user-1', title: 'Welcome to SCOS', titleAr: 'مرحباً بك في SCOS', message: 'Your account has been created successfully.', messageAr: 'تم إنشاء حسابك بنجاح.', type: 'success', read: false, link: '/' });
   addNotification({ companyId: 'demo-company', userId: 'user-1', title: 'New Leave Request', titleAr: 'طلب إجازة جديد', message: 'Sara Al-Qahtani has submitted a sick leave request.', messageAr: 'قامت سارة القحطاني بتقديم طلب إجازة مرضية.', type: 'info', read: false, link: '/leaves' });
   addNotification({ companyId: 'demo-company', userId: 'user-1', title: 'Payroll Complete', titleAr: 'اكتمال معالجة الرواتب', message: 'July payroll has been processed successfully.', messageAr: 'تمت معالجة رواتب يوليو بنجاح.', type: 'success', read: false, link: '/payroll' });
+
+  addMessage({ senderId: 'user-1', senderName: 'System', content: 'Welcome to the SCOS Communication Center!' });
+  addAnnouncement({ title: 'Company Holiday Update', titleAr: 'تحديث الإجازة الرسمية', content: 'The company will observe the upcoming Saudi National Day as an official holiday.', contentAr: 'ستحتفل الشركة باليوم الوطني السعودي القادم كإجازة رسمية.', author: 'HR Department', priority: 'high' });
+
+  addAuditLog('user-1', 'Admin User', 'Login', 'Admin logged in');
+  addAuditLog('user-1', 'Admin User', 'Settings', 'Company profile updated');
+  addAuditLog('user-2', 'Employee User', 'Login', 'Employee logged in');
 }
 
 // Seed data on module import
