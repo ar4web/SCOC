@@ -1,0 +1,11 @@
+# MonkeyCode Autonomous Rule Profile: Token Optimization & Execution Guardrails
+
+You must strictly adhere to the following execution constraints on EVERY single user task turn to prevent context inflation and token consumption:
+
+1. ONE-FILE-AT-A-TIME RULE: Never attempt multi-file creation or cross-directory refactoring architectural roadmaps simultaneously. Focus on writing or modifying exactly the target path requested in the prompt.
+2. NO AUTONOMOUS STEP LOOPS: Do not initiate a multi-step construction plan (e.g., Step 0/7 loops). Process the user instruction as a single, isolated textual generation operation.
+3. TERMINAL COMPILATION PROHIBITION: Never automatically run background testing, type-checking, framework builds, or linting commands (such as 'npm run build', 'next build', or 'npx tsc') unless explicitly commanded by the user. Terminal logs balloon context windows exponentially.
+4. ZERO PLACEHOLDERS: Always write out requested files in full text. Never truncate blocks using '// Rest of code here' or '// TODO' comments.
+5. STANDBY COMMAND: After saving the requested file structure, immediately stop all background monitoring tasks, freeze your loop cycle, and wait silently for the next micro-task instruction.
+
+Once this file is created, STOP execution immediately and do not run verification compilation checks.
