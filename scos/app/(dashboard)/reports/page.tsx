@@ -1,14 +1,12 @@
 'use client';
 
 import React from 'react';
-import dynamic from 'next/dynamic';
 import { useLanguageStore } from '@/stores/language-store';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { reportsService, DashboardStats } from '@/modules/reports/service';
 import { t, formatCurrency } from '@/lib/utils';
+import { Chart } from '@/engines/chart-engine';
 import { BarChart3, Users, Calendar, DollarSign, TrendingUp, PieChart } from 'lucide-react';
-
-const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
 export default function ReportsPage() {
   const { language, dir } = useLanguageStore();
@@ -35,44 +33,9 @@ export default function ReportsPage() {
 
   if (!stats) return null;
 
-  const chartTheme = {
-    chart: { foreColor: '#6B7280', fontFamily: language === 'ar' ? 'Cairo' : 'Inter' },
-    tooltip: { theme: 'light' as const },
-  };
-
-  const departmentChart = {
-    series: stats.departmentDistribution.map((d) => d.count),
-    options: {
-      ...chartTheme,
-      labels: stats.departmentDistribution.map((d) => d.name),
-      colors: ['#009B77', '#00205B', '#FFC72C', '#0DCAF0', '#FD7E14', '#198754'],
-      plotOptions: { pie: { donut: { size: '60%' } } },
-      legend: { position: 'bottom' as const },
-      responsive: [{ breakpoint: 480, options: { chart: { width: 300 } } }],
-    },
-  };
-
-  const contractChart = {
-    series: [{ data: stats.contractDistribution.map((c) => c.count) }],
-    options: {
-      ...chartTheme,
-      chart: { type: 'bar' as const, toolbar: { show: false } },
-      xaxis: { categories: stats.contractDistribution.map((c) => c.name) },
-      colors: ['#009B77'],
-      plotOptions: { bar: { borderRadius: 4 } },
-    },
-  };
-
-  const statusChart = {
-    series: stats.statusDistribution.map((s) => s.count),
-    options: {
-      ...chartTheme,
-      labels: stats.statusDistribution.map((s) => s.name),
-      colors: ['#198754', '#6B7280', '#DC3545'],
-      plotOptions: { pie: { donut: { size: '60%' } } },
-      legend: { position: 'bottom' as const },
-    },
-  };
+  const departmentDistribution = stats.departmentDistribution;
+  const contractDistribution = stats.contractDistribution;
+  const statusDistribution = stats.statusDistribution;
 
   const kpiCards = [
     {
@@ -140,12 +103,14 @@ export default function ReportsPage() {
             </h2>
           </CardHeader>
           <CardBody>
-            {stats.departmentDistribution.length > 0 ? (
+            {departmentDistribution.length > 0 ? (
               <Chart
-                options={departmentChart.options}
-                series={departmentChart.series}
                 type="donut"
+                series={departmentDistribution.map((d) => d.count)}
+                labels={departmentDistribution.map((d) => d.name)}
                 height={300}
+                locale={language}
+                dir={dir}
               />
             ) : (
               <p className="text-center text-gray-500 py-8">
@@ -163,12 +128,14 @@ export default function ReportsPage() {
             </h2>
           </CardHeader>
           <CardBody>
-            {stats.contractDistribution.length > 0 ? (
+            {contractDistribution.length > 0 ? (
               <Chart
-                options={contractChart.options}
-                series={contractChart.series}
                 type="bar"
+                series={[{ name: t('Employees', 'الموظفون', language), data: contractDistribution.map((c) => c.count) }]}
+                categories={contractDistribution.map((c) => c.name)}
                 height={300}
+                locale={language}
+                dir={dir}
               />
             ) : (
               <p className="text-center text-gray-500 py-8">
@@ -186,12 +153,15 @@ export default function ReportsPage() {
             </h2>
           </CardHeader>
           <CardBody>
-            {stats.statusDistribution.some((s) => s.count > 0) ? (
+            {statusDistribution.some((s) => s.count > 0) ? (
               <Chart
-                options={statusChart.options}
-                series={statusChart.series}
                 type="donut"
+                series={statusDistribution.map((s) => s.count)}
+                labels={statusDistribution.map((s) => s.name)}
+                colors={['#198754', '#6B7280', '#DC3545']}
                 height={300}
+                locale={language}
+                dir={dir}
               />
             ) : (
               <p className="text-center text-gray-500 py-8">

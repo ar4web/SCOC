@@ -238,8 +238,35 @@ export function setModuleStates(states: Record<string, boolean>): Company | unde
   return company;
 }
 
-export function addEmployee(data: Omit<Employee, 'id' | 'employeeId' | 'createdAt' | 'updatedAt'>): Employee {
-  employeeCounter++;
+export function addUser(data: Omit<User, 'id'> & { password?: string }): User {
+  const id = generateId();
+  const user: User = {
+    id,
+    email: data.email,
+    name: data.name,
+    nameAr: data.nameAr,
+    role: data.role,
+    companyId: data.companyId,
+    language: data.language,
+    avatar: data.avatar,
+  };
+  users.set(id, { ...user, password: data.password || 'Password123!' });
+  return user;
+}
+
+export function updateUser(id: string, updates: Partial<Pick<User, 'name' | 'nameAr' | 'role' | 'language' | 'avatar'>>): User | undefined {
+  const existing = users.get(id);
+  if (!existing) return undefined;
+  const updated: User = { ...existing, ...updates };
+  users.set(id, { ...updated, password: existing.password });
+  return updated;
+}
+
+export function deleteUser(id: string): boolean {
+  return users.delete(id);
+}
+
+export function addEmployee(data: Omit<Employee, 'id' | 'employeeId' | 'createdAt' | 'updatedAt'>): Employee {  employeeCounter++;
   const total = data.salary.basic + data.salary.housing + data.salary.transportation + data.salary.otherAllowances;
   const employee: Employee = {
     ...data,

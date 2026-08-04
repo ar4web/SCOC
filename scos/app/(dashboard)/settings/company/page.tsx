@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/Toast';
 import { Building2, Save } from 'lucide-react';
 
 export default function CompanyProfilePage() {
-  const { company, updateBranding } = useCompanyStore();
+  const { company, updateCompany } = useCompanyStore();
   const { language } = useLanguageStore();
   const { addToast } = useToast();
   const [form, setForm] = React.useState({
@@ -32,9 +32,18 @@ export default function CompanyProfilePage() {
     }
   }, [company]);
 
-  const handleSave = () => {
-    // Simulated save
-    addToast({ type: 'success', title: t('Company profile updated successfully!', 'تم تحديث بيانات الشركة بنجاح!', language) });
+  const handleSave = async () => {
+    const res = await updateCompany({
+      name: form.name,
+      nameAr: form.nameAr,
+      taxNumber: form.taxNumber,
+      industry: form.industry,
+    });
+    if (res.success) {
+      addToast({ type: 'success', title: t('Company profile updated successfully!', 'تم تحديث بيانات الشركة بنجاح!', language) });
+    } else {
+      addToast({ type: 'error', title: res.error || t('Failed to update company', 'فشل تحديث بيانات الشركة', language) });
+    }
   };
 
   if (!company) return null;

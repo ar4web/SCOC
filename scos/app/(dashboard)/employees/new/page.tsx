@@ -5,31 +5,83 @@ import { useRouter } from 'next/navigation';
 import { useLanguageStore } from '@/stores/language-store';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { FormBuilder, FormField } from '@/engines/form-engine';
 import { employeeService } from '@/modules/employee-management/service';
 import { t } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
-import { UserPlus, Save, ArrowLeft } from 'lucide-react';
+import { UserPlus, ArrowLeft } from 'lucide-react';
 
 export default function NewEmployeePage() {
   const router = useRouter();
   const { language, dir } = useLanguageStore();
   const { addToast } = useToast();
-  const [values, setValues] = React.useState<Record<string, string>>({});
   const [saving, setSaving] = React.useState(false);
 
-  const setValue = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValues((prev) => ({ ...prev, [key]: e.target.value }));
-  };
+  const fields: FormField[][] = [
+    [
+      {
+        name: 'firstName',
+        label: t('First Name', 'الاسم الأول', language),
+        labelAr: t('First Name', 'الاسم الأول', language),
+        required: true,
+      },
+      {
+        name: 'lastName',
+        label: t('Last Name', 'اسم العائلة', language),
+        labelAr: t('Last Name', 'اسم العائلة', language),
+        required: true,
+      },
+    ],
+    [
+      { name: 'email', label: t('Email', 'البريد الإلكتروني', language), labelAr: t('Email', 'البريد الإلكتروني', language), type: 'email' },
+      { name: 'phone', label: t('Phone', 'الهاتف', language), labelAr: t('Phone', 'الهاتف', language), type: 'tel' },
+    ],
+    [
+      {
+        name: 'nationality',
+        label: t('Nationality', 'الجنسية', language),
+        labelAr: t('Nationality', 'الجنسية', language),
+        placeholder: 'Saudi',
+      },
+      {
+        name: 'nationalId',
+        label: t('Iqama / National ID', 'رقم الهوية / الإقامة', language),
+        labelAr: t('Iqama / National ID', 'رقم الهوية / الإقامة', language),
+        required: true,
+        validation: { minLength: 10, maxLength: 10, pattern: /^\d{10}$/ },
+      },
+    ],
+    [
+      { name: 'dateOfBirth', label: t('Date of Birth', 'تاريخ الميلاد', language), labelAr: t('Date of Birth', 'تاريخ الميلاد', language), type: 'date' },
+      { name: 'city', label: t('City', 'المدينة', language), labelAr: t('City', 'المدينة', language) },
+    ],
+    [
+      { name: 'department', label: t('Department', 'القسم', language), labelAr: t('Department', 'القسم', language), required: true },
+      { name: 'role', label: t('Role', 'الوظيفة', language), labelAr: t('Role', 'الوظيفة', language), required: true },
+    ],
+    [
+      { name: 'hireDate', label: t('Hire Date', 'تاريخ التعيين', language), labelAr: t('Hire Date', 'تاريخ التعيين', language), type: 'date' },
+      { name: 'bankName', label: t('Bank Name', 'اسم البنك', language), labelAr: t('Bank Name', 'اسم البنك', language) },
+    ],
+    [
+      { name: 'iban', label: t('IBAN', 'الآيبان', language), labelAr: t('IBAN', 'الآيبان', language), validation: { minLength: 24, maxLength: 24 } },
+    ],
+    [
+      { name: 'basicSalary', label: t('Basic Salary', 'الراتب الأساسي', language), labelAr: t('Basic Salary', 'الراتب الأساسي', language), type: 'number', required: true },
+      { name: 'housingAllowance', label: t('Housing Allowance', 'بدل السكن', language), labelAr: t('Housing Allowance', 'بدل السكن', language), type: 'number' },
+    ],
+    [
+      { name: 'transportAllowance', label: t('Transport Allowance', 'بدل النقل', language), labelAr: t('Transport Allowance', 'بدل النقل', language), type: 'number' },
+    ],
+  ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (values: Record<string, string>) => {
     setSaving(true);
 
     const data = {
       companyId: 'demo-company',
       fullName: `${values.firstName || ''} ${values.lastName || ''}`.trim(),
-      fullNameAr: values.firstNameAr || '',
+      fullNameAr: '',
       email: values.email || '',
       phone: values.phone || '',
       nationalId: values.nationalId || '',
@@ -49,7 +101,7 @@ export default function NewEmployeePage() {
         otherAllowances: 0,
         total: 0,
         bankName: values.bankName || '',
-        bankAccount: values.bankAccount || '',
+        bankAccount: values.iban || '',
         iban: values.iban || '',
       },
       address: {
@@ -82,10 +134,6 @@ export default function NewEmployeePage() {
     }
   };
 
-  const sectionLabel = (title: string) => (
-    <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-  );
-
   return (
     <div className="mx-auto max-w-3xl space-y-6" dir={dir}>
       <div className="flex items-center justify-between">
@@ -103,146 +151,26 @@ export default function NewEmployeePage() {
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
-          <CardHeader className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-              <UserPlus className="h-5 w-5 text-primary" />
-            </div>
-            {sectionLabel(t('Personal Details', 'البيانات الشخصية', language))}
-          </CardHeader>
-          <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              label={t('First Name', 'الاسم الأول', language)}
-              value={values.firstName || ''}
-              onChange={setValue('firstName')}
-              required
-            />
-            <Input
-              label={t('Last Name', 'اسم العائلة', language)}
-              value={values.lastName || ''}
-              onChange={setValue('lastName')}
-              required
-            />
-            <Input
-              label={t('Email', 'البريد الإلكتروني', language)}
-              type="email"
-              value={values.email || ''}
-              onChange={setValue('email')}
-            />
-            <Input
-              label={t('Phone', 'الهاتف', language)}
-              value={values.phone || ''}
-              onChange={setValue('phone')}
-            />
-            <Input
-              label={t('Nationality', 'الجنسية', language)}
-              value={values.nationality || ''}
-              onChange={setValue('nationality')}
-              placeholder="Saudi"
-            />
-            <Input
-              label={t('Iqama / National ID', 'رقم الهوية / الإقامة', language)}
-              value={values.nationalId || ''}
-              onChange={setValue('nationalId')}
-              required
-            />
-            <Input
-              label={t('Date of Birth', 'تاريخ الميلاد', language)}
-              type="date"
-              value={values.dateOfBirth || ''}
-              onChange={setValue('dateOfBirth')}
-            />
-            <Input
-              label={t('City', 'المدينة', language)}
-              value={values.city || ''}
-              onChange={setValue('city')}
-            />
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-              <UserPlus className="h-5 w-5 text-primary" />
-            </div>
-            {sectionLabel(t('Employment Details', 'البيانات الوظيفية', language))}
-          </CardHeader>
-          <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              label={t('Department', 'القسم', language)}
-              value={values.department || ''}
-              onChange={setValue('department')}
-              required
-            />
-            <Input
-              label={t('Role', 'الوظيفة', language)}
-              value={values.role || ''}
-              onChange={setValue('role')}
-              required
-            />
-            <Input
-              label={t('Hire Date', 'تاريخ التعيين', language)}
-              type="date"
-              value={values.hireDate || ''}
-              onChange={setValue('hireDate')}
-            />
-            <Input
-              label={t('Bank Name', 'اسم البنك', language)}
-              value={values.bankName || ''}
-              onChange={setValue('bankName')}
-            />
-            <Input
-              label={t('IBAN', 'الآيبان', language)}
-              value={values.iban || ''}
-              onChange={setValue('iban')}
-            />
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-              <UserPlus className="h-5 w-5 text-primary" />
-            </div>
-            {sectionLabel(t('Salary Info', 'الراتب', language))}
-          </CardHeader>
-          <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Input
-              label={t('Basic Salary', 'الراتب الأساسي', language)}
-              type="number"
-              min={0}
-              value={values.basicSalary || ''}
-              onChange={setValue('basicSalary')}
-              required
-            />
-            <Input
-              label={t('Housing Allowance', 'بدل السكن', language)}
-              type="number"
-              min={0}
-              value={values.housingAllowance || ''}
-              onChange={setValue('housingAllowance')}
-            />
-            <Input
-              label={t('Transport Allowance', 'بدل النقل', language)}
-              type="number"
-              min={0}
-              value={values.transportAllowance || ''}
-              onChange={setValue('transportAllowance')}
-            />
-          </CardBody>
-        </Card>
-
-        <div className="flex items-center justify-end gap-3">
-          <Button type="button" variant="outline" onClick={() => router.push('/employees')}>
-            {t('Cancel', 'إلغاء', language)}
-          </Button>
-          <Button type="submit" loading={saving}>
-            <Save className="h-4 w-4" />
-            {saving ? t('Saving...', 'جارٍ الحفظ...', language) : t('Save Employee', 'حفظ الموظف', language)}
-          </Button>
-        </div>
-      </form>
+      <Card>
+        <CardHeader className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+            <UserPlus className="h-5 w-5 text-primary" />
+          </div>
+          <h2 className="text-base font-semibold text-gray-900">
+            {t('New Employee Record', 'سجل موظف جديد', language)}
+          </h2>
+        </CardHeader>
+        <CardBody>
+          <FormBuilder
+            fields={fields}
+            locale={language}
+            onSubmit={handleSubmit}
+            submitLabel={t('Save Employee', 'حفظ الموظف', language)}
+            submitLabelAr={t('Save Employee', 'حفظ الموظف', language)}
+            loading={saving}
+          />
+        </CardBody>
+      </Card>
     </div>
   );
 }

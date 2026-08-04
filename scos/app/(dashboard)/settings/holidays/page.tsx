@@ -8,12 +8,13 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { t, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
+import { settingsService } from '@/modules/settings/service';
 import { CalendarDays, Plus, Save, Trash2 } from 'lucide-react';
 import { Holiday } from '@/types';
 
 export default function HolidaysPage() {
   const { language } = useLanguageStore();
-  const { company, updateSettings } = useCompanyStore();
+  const { company } = useCompanyStore();
   const { addToast } = useToast();
   const [holidays, setHolidays] = React.useState<Holiday[]>([]);
   const [showNew, setShowNew] = React.useState(false);
@@ -41,9 +42,13 @@ export default function HolidaysPage() {
     setHolidays(holidays.filter((h) => h.id !== id));
   };
 
-  const handleSave = () => {
-    updateSettings({ holidays });
-    addToast({ type: 'success', title: t('Holidays saved!', 'تم حفظ الإجازات الرسمية!', language) });
+  const handleSave = async () => {
+    const res = await settingsService.update('holidays', { holidays });
+    if (res.success) {
+      addToast({ type: 'success', title: t('Holidays saved!', 'تم حفظ الإجازات الرسمية!', language) });
+    } else {
+      addToast({ type: 'error', title: t('Failed to save holidays', 'فشل حفظ الإجازات', language) });
+    }
   };
 
   return (

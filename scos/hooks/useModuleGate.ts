@@ -2,16 +2,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useModuleStore } from '@/stores/module-store';
-
-const moduleRouteMap: Record<string, string> = {
-  '/employees': 'employee-management',
-  '/leaves': 'leave-management',
-  '/payroll': 'payroll',
-  '/attendance': 'attendance',
-  '/communication': 'communication',
-  '/reports': 'reports',
-  '/administration': 'administration',
-};
+import { MODULE_ROUTE_MAP } from '@/lib/module-route-map';
 
 export function useModuleGate() {
   const pathname = usePathname();
@@ -21,7 +12,7 @@ export function useModuleGate() {
   useEffect(() => {
     if (isLoading || !pathname) return;
 
-    const matched = Object.entries(moduleRouteMap).find(
+    const matched = Object.entries(MODULE_ROUTE_MAP).find(
       ([route]) => pathname === route || pathname.startsWith(`${route}/`)
     );
 

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Toggle } from '@/components/ui/Toggle';
 import { t } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
+import { settingsService } from '@/modules/settings/service';
 import { Clock, Save } from 'lucide-react';
 
 const weekDays = [
@@ -22,7 +23,7 @@ const weekDays = [
 
 export default function WorkWeekPage() {
   const { language } = useLanguageStore();
-  const { company, updateSettings } = useCompanyStore();
+  const { company } = useCompanyStore();
   const [weekendDays, setWeekendDays] = React.useState<number[]>([5, 6]);
   const [startHour, setStartHour] = React.useState('09:00');
   const { addToast } = useToast();
@@ -42,12 +43,16 @@ export default function WorkWeekPage() {
     );
   };
 
-  const handleSave = () => {
-    updateSettings({
-      weekendDays,
-      workingHours: { start: startHour, end: endHour },
-    });
-    addToast({ type: 'success', title: t('Work week settings saved!', 'تم حفظ إعدادات أسبوع العمل!', language) });
+  const handleSave = async () => {
+    const [hoursRes, weekendRes] = await Promise.all([
+      settingsService.update('working-hours', { start: startHour, end: endHour }),
+      settingsService.update('weekend', weekendDays),
+    ]);
+    if (hoursRes.success && weekendRes.success) {
+      addToast({ type: 'success', title: t('Work week settings saved!', 'تم حفظ إعدادات أسبوع العمل!', language) });
+    } else {
+      addToast({ type: 'error', title: t('Failed to save settings', 'فشل حفظ الإعدادات', language) });
+    }
   };
 
   return (

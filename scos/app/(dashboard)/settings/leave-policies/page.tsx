@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Toggle } from '@/components/ui/Toggle';
 import { t } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
+import { settingsService } from '@/modules/settings/service';
 import { LeaveType, LeavePolicy } from '@/types';
 import { CalendarCheck, Save, RotateCcw } from 'lucide-react';
 
@@ -24,7 +25,7 @@ const leaveTypeMeta: { type: LeaveType; en: string; ar: string; enDesc: string; 
 
 export default function LeavePoliciesPage() {
   const { language } = useLanguageStore();
-  const { company, updateSettings } = useCompanyStore();
+  const { company } = useCompanyStore();
   const { addToast } = useToast();
   const [policies, setPolicies] = React.useState<LeavePolicy[]>([]);
 
@@ -40,9 +41,13 @@ export default function LeavePoliciesPage() {
     );
   };
 
-  const handleSave = () => {
-    updateSettings({ leavePolicies: policies });
-    addToast({ type: 'success', title: t('Leave policies saved!', 'تم حفظ سياسات الإجازات!', language) });
+  const handleSave = async () => {
+    const res = await settingsService.update('leave-policies', { policies });
+    if (res.success) {
+      addToast({ type: 'success', title: t('Leave policies saved!', 'تم حفظ سياسات الإجازات!', language) });
+    } else {
+      addToast({ type: 'error', title: t('Failed to save policies', 'فشل حفظ السياسات', language) });
+    }
   };
 
   const handleReset = () => {

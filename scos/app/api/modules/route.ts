@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { companies, moduleDefinitions, setModuleStates } from '@/lib/mock-data';
 import { ModuleStates } from '@/types';
+import { MODULE_STATES_COOKIE } from '@/lib/module-route-map';
 
 export async function GET() {
   const company = companies.get('demo-company');
+  const states = company?.moduleStates ?? {};
+
+  const cookieStore = cookies();
+  cookieStore.set(MODULE_STATES_COOKIE, JSON.stringify(states), { path: '/', httpOnly: true });
+
   return NextResponse.json({
     modules: moduleDefinitions,
-    states: company?.moduleStates ?? {},
+    states,
   });
 }
 
@@ -68,6 +75,9 @@ export async function PUT(req: Request) {
   }
 
   setModuleStates(merged);
+
+  const cookieStore = cookies();
+  cookieStore.set(MODULE_STATES_COOKIE, JSON.stringify(merged), { path: '/', httpOnly: true });
 
   return NextResponse.json({
     modules: moduleDefinitions,
