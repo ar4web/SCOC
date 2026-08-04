@@ -52,6 +52,50 @@ export default function NewEmployeePage() {
       },
     ],
     [
+      {
+        name: 'fullNameAr',
+        label: t('Full Name (Arabic)', 'الاسم الكامل (عربي)', language),
+        labelAr: t('Full Name (Arabic)', 'الاسم الكامل (عربي)', language),
+      },
+      {
+        name: 'religion',
+        label: t('Religion', 'الديانة', language),
+        labelAr: t('Religion', 'الديانة', language),
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'muslim', label: t('Muslim', 'مسلم', language), labelAr: t('Muslim', 'مسلم', language) },
+          { value: 'other', label: t('Other', 'أخرى', language), labelAr: t('Other', 'أخرى', language) },
+        ],
+      },
+    ],
+    [
+      {
+        name: 'gender',
+        label: t('Gender', 'الجنس', language),
+        labelAr: t('Gender', 'الجنس', language),
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'male', label: t('Male', 'ذكر', language), labelAr: t('Male', 'ذكر', language) },
+          { value: 'female', label: t('Female', 'أنثى', language), labelAr: t('Female', 'أنثى', language) },
+        ],
+      },
+      {
+        name: 'maritalStatus',
+        label: t('Marital Status', 'الحالة الاجتماعية', language),
+        labelAr: t('Marital Status', 'الحالة الاجتماعية', language),
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'single', label: t('Single', 'أعزب', language), labelAr: t('Single', 'أعزب', language) },
+          { value: 'married', label: t('Married', 'متزوج', language), labelAr: t('Married', 'متزوج', language) },
+          { value: 'divorced', label: t('Divorced', 'مطلق', language), labelAr: t('Divorced', 'مطلق', language) },
+          { value: 'widowed', label: t('Widowed', 'أرمل', language), labelAr: t('Widowed', 'أرمل', language) },
+        ],
+      },
+    ],
+    [
       { name: 'dateOfBirth', label: t('Date of Birth', 'تاريخ الميلاد', language), labelAr: t('Date of Birth', 'تاريخ الميلاد', language), type: 'date' },
       { name: 'city', label: t('City', 'المدينة', language), labelAr: t('City', 'المدينة', language) },
     ],
@@ -60,10 +104,23 @@ export default function NewEmployeePage() {
       { name: 'role', label: t('Role', 'الوظيفة', language), labelAr: t('Role', 'الوظيفة', language), required: true },
     ],
     [
+      {
+        name: 'contractType',
+        label: t('Contract Type', 'نوع العقد', language),
+        labelAr: t('Contract Type', 'نوع العقد', language),
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'permanent', label: t('Permanent', 'دائم', language), labelAr: t('Permanent', 'دائم', language) },
+          { value: 'fixed_term', label: t('Fixed Term', 'محدد المدة', language), labelAr: t('Fixed Term', 'محدد المدة', language) },
+          { value: 'part_time', label: t('Part Time', 'دوام جزئي', language), labelAr: t('Part Time', 'دوام جزئي', language) },
+          { value: 'probation', label: t('Probation', 'تجريبي', language), labelAr: t('Probation', 'تجريبي', language) },
+        ],
+      },
       { name: 'hireDate', label: t('Hire Date', 'تاريخ التعيين', language), labelAr: t('Hire Date', 'تاريخ التعيين', language), type: 'date' },
-      { name: 'bankName', label: t('Bank Name', 'اسم البنك', language), labelAr: t('Bank Name', 'اسم البنك', language) },
     ],
     [
+      { name: 'bankName', label: t('Bank Name', 'اسم البنك', language), labelAr: t('Bank Name', 'اسم البنك', language) },
       { name: 'iban', label: t('IBAN', 'الآيبان', language), labelAr: t('IBAN', 'الآيبان', language), validation: { minLength: 24, maxLength: 24 } },
     ],
     [
@@ -81,17 +138,17 @@ export default function NewEmployeePage() {
     const data = {
       companyId: 'demo-company',
       fullName: `${values.firstName || ''} ${values.lastName || ''}`.trim(),
-      fullNameAr: '',
+      fullNameAr: values.fullNameAr || '',
       email: values.email || '',
       phone: values.phone || '',
       nationalId: values.nationalId || '',
       nationality: values.nationality || 'Saudi',
-      religion: 'muslim' as const,
-      gender: 'male' as const,
-      maritalStatus: 'single' as const,
+      religion: (values.religion as 'muslim' | 'other') || 'muslim',
+      gender: (values.gender as 'male' | 'female') || 'male',
+      maritalStatus: (values.maritalStatus as 'single' | 'married' | 'divorced' | 'widowed') || 'single',
       dateOfBirth: values.dateOfBirth || '',
       hireDate: values.hireDate || new Date().toISOString().split('T')[0],
-      contractType: 'permanent' as const,
+      contractType: (values.contractType as 'permanent' | 'fixed_term' | 'part_time' | 'probation') || 'permanent',
       department: values.department || '',
       position: values.role || '',
       salary: {

@@ -60,13 +60,15 @@ export default function PayrollPage() {
   const handleDownloadWPS = async () => {
     const res = await payrollService.getWPS(period);
     if (res.success && res.data) {
-      const blob = new Blob([res.data as any], { type: 'text/plain' });
+      const blob = new Blob([res.data as string], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `WPS_${period}.txt`;
       a.click();
       URL.revokeObjectURL(url);
+    } else {
+      addToast({ type: 'error', title: res.error || t('Failed to generate WPS file', 'فشل في إنشاء ملف WPS', language) });
     }
   };
 

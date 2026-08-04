@@ -1,6 +1,10 @@
 'use client';
+import React from 'react';
 import { useLanguageStore } from '@/stores/language-store';
-import { t } from '@/lib/utils';
+import { t, formatCurrency } from '@/lib/utils';
+import { reportsService, DashboardStats } from '@/modules/reports/service';
+import { attendanceService } from '@/modules/attendance/service';
+import { Attendance } from '@/types';
 import {
   Users, CalendarClock, DollarSign, UserCheck, TrendingUp, AlertTriangle,
 } from 'lucide-react';
@@ -15,21 +19,109 @@ interface Stat {
   color: string;
 }
 
-const stats: Stat[] = [
-  { label: { en: 'Total Employees', ar: 'إجمالي الموظفين' }, value: '148', change: '+6', up: true, icon: Users, color: 'bg-blue-100 text-blue-600' },
-  { label: { en: 'Pending Leaves', ar: 'الإجازات المعلقة' }, value: '12', change: '-3', up: false, icon: CalendarClock, color: 'bg-amber-100 text-amber-600' },
-  { label: { en: 'Active Payroll', ar: 'الرواتب النشطة' }, value: 'SAR 482K', change: '+4.2%', up: true, icon: DollarSign, color: 'bg-emerald-100 text-emerald-600' },
-  { label: { en: 'Present Today', ar: 'الحاضرون اليوم' }, value: '134 / 148', change: '91%', up: true, icon: UserCheck, color: 'bg-purple-100 text-purple-600' },
-];
-
-const alerts = [
-  { text: { en: '5 leave requests awaiting approval', ar: '5 طلبات إجازة بانتظار الموافقة' }, icon: AlertTriangle, color: 'text-amber-600 bg-amber-100' },
-  { text: { en: 'Payroll run for September scheduled Friday', ar: 'تشغيل رواتب سبتمبر مجدول يوم الجمعة' }, icon: TrendingUp, color: 'text-emerald-600 bg-emerald-100' },
-  { text: { en: '3 employee contracts expiring this month', ar: '3 عقود موظفين تنتهي هذا الشهر' }, icon: AlertTriangle, color: 'text-red-600 bg-red-100' },
-];
+const deptColors = ['bg-primary', 'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500', 'bg-info'];
 
 export default function DashboardPage() {
   const { language } = useLanguageStore();
+  const [stats, setStats] = React.useState<DashboardStats | null>(null);
+  const [attendance, setAttendance] = React.useState<Attendance[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    const [statsRes, attRes] = await Promise.all([
+      reportsService.getStats(),
+      attendanceService.list(),
+    ]);
+    if (statsRes.success && statsRes.data) setStats(statsRes.data);
+    if (attRes.success && attRes.data) setAttendance(attRes.data.data);
+    setLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!stats) return null;
+
+  const today = new Date().toISOString().split('T')[0];
+  const presentToday = attendance.filter((a) => a.date === today && a.status !== 'absent').length;
+  const presentPct = stats.totalEmployees > 0 ? Math.round((presentToday / stats.totalEmployees) * 100) : 0;
+
+  const statsCards: Stat[] = [
+    {
+      label: { en: 'Total Employees', ar: 'إجمالي الموظفين' },
+      value: stats.totalEmployees.toString(),
+      change: stats.activeEmployees.toString(),
+      up: true,
+      icon: Users,
+      color: 'bg-blue-100 text-blue-600',
+    },
+    {
+      label: { en: 'Pending Leaves', ar: 'الإجازات المعلقة' },
+      value: stats.pendingLeaves.toString(),
+      change: stats.leaveStatus.find((l) => l.name === 'approved')?.count.toString() || '0',
+      up: false,
+      icon: CalendarClock,
+      color: 'bg-amber-100 text-amber-600',
+    },
+    {
+      label: { en: 'Monthly Payroll', ar: 'الرواتب الشهرية' },
+      value: formatCurrency(stats.totalPayroll),
+      change: formatCurrency(stats.avgSalary),
+      up: true,
+      icon: DollarSign,
+      color: 'bg-emerald-100 text-emerald-600',
+    },
+    {
+      label: { en: 'Present Today', ar: 'الحاضرون اليوم' },
+      value: `${presentToday} / ${stats.totalEmployees}`,
+      change: `${presentPct}%`,
+      up: true,
+      icon: UserCheck,
+      color: 'bg-purple-100 text-purple-600',
+    },
+  ];
+
+  const pendingLeaves = stats.pendingLeaves;
+  const alerts = [
+    {
+      text: {
+        en: `${pendingLeaves} leave request${pendingLeaves === 1 ? '' : 's'} awaiting approval`,
+        ar: `${pendingLeaves} طلب إجازة بانتظار الموافقة`,
+      },
+      icon: AlertTriangle,
+      color: 'text-amber-600 bg-amber-100',
+      show: pendingLeaves > 0,
+    },
+    {
+      text: {
+        en: `${stats.activeEmployees} of ${stats.totalEmployees} employees are active`,
+        ar: `${stats.activeEmployees} من أصل ${stats.totalEmployees} موظف نشط`,
+      },
+      icon: TrendingUp,
+      color: 'text-emerald-600 bg-emerald-100',
+      show: true,
+    },
+    {
+      text: {
+        en: 'Track attendance and process payroll from the modules menu',
+        ar: 'تابع الحضور وعالج الرواتب من قائمة الوحدات',
+      },
+      icon: AlertTriangle,
+      color: 'text-red-600 bg-red-100',
+      show: true,
+    },
+  ].filter((a) => a.show);
+
+  const departmentData = stats.departmentDistribution;
 
   return (
     <div className="space-y-6">
@@ -44,7 +136,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map((s) => {
+        {statsCards.map((s) => {
           const Icon = s.icon;
           return (
             <div key={s.label.en} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -67,23 +159,24 @@ export default function DashboardPage() {
             {t('Headcount by Department', 'عدد الموظفين حسب القسم', language)}
           </h2>
           <div className="mt-6 space-y-4">
-            {[
-              { name: t('Engineering', 'الهندسة', language), count: 52, pct: 35, color: 'bg-primary' },
-              { name: t('Operations', 'العمليات', language), count: 38, pct: 26, color: 'bg-blue-500' },
-              { name: t('Finance', 'المالية', language), count: 21, pct: 14, color: 'bg-emerald-500' },
-              { name: t('HR', 'الموارد البشرية', language), count: 18, pct: 12, color: 'bg-purple-500' },
-              { name: t('Sales', 'المبيعات', language), count: 19, pct: 13, color: 'bg-amber-500' },
-            ].map((d) => (
-              <div key={d.name}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="font-medium text-gray-700">{d.name}</span>
-                  <span className="text-gray-500">{d.count}</span>
+            {departmentData.length === 0 ? (
+              <p className="text-sm text-gray-500">{t('No department data yet', 'لا توجد بيانات أقسام بعد', language)}</p>
+            ) : (
+              departmentData.map((d, i) => (
+                <div key={d.name}>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="font-medium text-gray-700">{d.name}</span>
+                    <span className="text-gray-500">{d.count}</span>
+                  </div>
+                  <div className="h-2.5 w-full rounded-full bg-gray-100">
+                    <div
+                      className={`h-2.5 rounded-full ${deptColors[i % deptColors.length]}`}
+                      style={{ width: `${stats.totalEmployees > 0 ? Math.round((d.count / stats.totalEmployees) * 100) : 0}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2.5 w-full rounded-full bg-gray-100">
-                  <div className={`h-2.5 rounded-full ${d.color}`} style={{ width: `${d.pct}%` }} />
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 

@@ -286,6 +286,22 @@ export function addEmployee(data: Omit<Employee, 'id' | 'employeeId' | 'createdA
   return employee;
 }
 
+export function updateEmployee(
+  id: string,
+  data: Partial<Omit<Employee, 'id' | 'employeeId' | 'createdAt' | 'updatedAt' | 'companyId'>>
+): Employee | null {
+  const existing = employees.get(id);
+  if (!existing) return null;
+  const next: Employee = {
+    ...existing,
+    ...data,
+    salary: data.salary ? { ...data.salary, total: data.salary.basic + data.salary.housing + data.salary.transportation + data.salary.otherAllowances } : existing.salary,
+    updatedAt: new Date().toISOString(),
+  };
+  employees.set(id, next);
+  return next;
+}
+
 export function addLeave(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt'>): LeaveRequest {
   const leave: LeaveRequest = {
     ...data,

@@ -36,6 +36,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   checkAuth: () => Promise<void>;
+  setUser: (user: User) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -64,6 +65,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     clearToken();
     set({ user: null, token: null, isAuthenticated: false });
   },
+
+  setUser: (user: User) => set({ user }),
 
   checkAuth: async () => {
     const token = getTokenFromStorage();

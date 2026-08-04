@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getAllLeaves, createLeaveRequest } from '@/modules/leave-management/service';
-import { LeaveRequest } from '@/types';
+import { getAllLeaves, createLeaveRequest, updateLeaveStatus } from '@/modules/leave-management/service';
+import { LeaveRequest, LeaveStatus } from '@/types';
 
 export async function GET() {
   const data = getAllLeaves();
@@ -37,4 +37,34 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json(leave, { status: 201 });
+}
+
+export async function PUT(req: Request) {
+  let body: { id?: string; status?: LeaveStatus; approvedBy?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  if (!body.id || !body.status) {
+    return NextResponse.json({ error: 'id and status are required' }, { status: 400 });
+  }
+
+  const statuses: LeaveStatus[] = ['approved', 'rejected', 'cancelled'];
+  if (!statuses.includes(body.status)) {
+    return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+  }
+
+  const leave = updateLeaveStatus(body.id, body.status);
+  if (!leave) {
+    return NextResponse.json({ error: 'Leave request not found' }, { status: 404 });
+  }
+
+  if ((body.status === 'approved' || body.status === 'rejected') && body.approvedBy) {
+    leave.approvedBy = body.approvedBy;
+    leave.approvedAt = new Date().toISOString();
+  }
+
+  return NextResponse.json(leave);
 }

@@ -7,7 +7,8 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { communicationService, Message, Announcement } from '@/modules/communication/service';
 import { t, formatDate } from '@/lib/utils';
-import { MessageSquare, Send, Megaphone, AlertTriangle, Info } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
+import { MessageSquare, Send, Megaphone, AlertTriangle, Info, Plus, X } from 'lucide-react';
 
 const priorityColors: Record<string, string> = {
   urgent: 'bg-error/10 text-error border-error/20',
@@ -22,14 +23,24 @@ const priorityLabels: Record<string, { en: string; ar: string }> = {
 };
 
 export default function CommunicationPage() {
-  const { language } = useLanguageStore();
+  const { language, dir } = useLanguageStore();
   const { user } = useAuthStore();
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [announcements, setAnnouncements] = React.useState<Announcement[]>([]);
   const [newMessage, setNewMessage] = React.useState('');
   const [sending, setSending] = React.useState(false);
   const [tab, setTab] = React.useState<'chat' | 'announcements'>('chat');
+  const [showDialog, setShowDialog] = React.useState(false);
+  const [savingAnnouncement, setSavingAnnouncement] = React.useState(false);
+  const [annForm, setAnnForm] = React.useState({
+    title: '',
+    titleAr: '',
+    content: '',
+    contentAr: '',
+    priority: 'normal' as 'normal' | 'high' | 'urgent',
+  });
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const { addToast } = useToast();
 
   React.useEffect(() => {
     loadMessages();
@@ -59,8 +70,33 @@ export default function CommunicationPage() {
     setSending(false);
   };
 
+  const handleCreateAnnouncement = async () => {
+    if (!annForm.title.trim() || !annForm.content.trim() || !user) return;
+    setSavingAnnouncement(true);
+    const res = await communicationService.createAnnouncement({
+      title: annForm.title,
+      titleAr: annForm.titleAr || annForm.title,
+      content: annForm.content,
+      contentAr: annForm.contentAr || annForm.content,
+      author: user.name,
+      priority: annForm.priority,
+    });
+    setSavingAnnouncement(false);
+    if (res.success) {
+      addToast({
+        type: 'success',
+        title: t('Announcement published', 'تم نشر الإعلان', language),
+      });
+      setShowDialog(false);
+      setAnnForm({ title: '', titleAr: '', content: '', contentAr: '', priority: 'normal' });
+      loadAnnouncements();
+    } else {
+      addToast({ type: 'error', title: res.error || t('Failed to publish announcement', 'فشل في نشر الإعلان', language) });
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir={dir}>
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
           {t('Communication', 'التواصل', language)}
@@ -93,6 +129,12 @@ export default function CommunicationPage() {
 
       {tab === 'announcements' && (
         <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => setShowDialog(true)}>
+              <Plus className="h-4 w-4" />
+              {t('New Announcement', 'إعلان جديد', language)}
+            </Button>
+          </div>
           {announcements.length === 0 ? (
             <Card>
               <CardBody className="text-center py-12 text-gray-500">
@@ -193,6 +235,104 @@ export default function CommunicationPage() {
             </div>
           </CardBody>
         </Card>
+      )}
+
+      {showDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowDialog(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {t('New Announcement', 'إعلان جديد', language)}
+              </h2>
+              <button onClick={() => setShowDialog(false)} className="p-1 rounded-lg hover:bg-gray-100">
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="space-y-4 px-6 py-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('Title (EN)', 'العنوان (إنجليزي)', language)}
+                  </label>
+                  <input
+                    type="text"
+                    value={annForm.title}
+                    onChange={(e) => setAnnForm({ ...annForm, title: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('Title (AR)', 'العنوان (عربي)', language)}
+                  </label>
+                  <input
+                    type="text"
+                    value={annForm.titleAr}
+                    onChange={(e) => setAnnForm({ ...annForm, titleAr: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('Content (EN)', 'المحتوى (إنجليزي)', language)}
+                </label>
+                <textarea
+                  rows={3}
+                  value={annForm.content}
+                  onChange={(e) => setAnnForm({ ...annForm, content: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('Content (AR)', 'المحتوى (عربي)', language)}
+                </label>
+                <textarea
+                  rows={3}
+                  value={annForm.contentAr}
+                  onChange={(e) => setAnnForm({ ...annForm, contentAr: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('Priority', 'الأولوية', language)}
+                </label>
+                <select
+                  value={annForm.priority}
+                  onChange={(e) => setAnnForm({ ...annForm, priority: e.target.value as 'normal' | 'high' | 'urgent' })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
+                >
+                  <option value="normal">{t('Normal', 'عادي', language)}</option>
+                  <option value="high">{t('High', 'عالي', language)}</option>
+                  <option value="urgent">{t('Urgent', 'عاجل', language)}</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+              <Button variant="outline" onClick={() => setShowDialog(false)}>
+                {t('Cancel', 'إلغاء', language)}
+              </Button>
+              <Button
+                onClick={handleCreateAnnouncement}
+                loading={savingAnnouncement}
+                disabled={!annForm.title.trim() || !annForm.content.trim()}
+              >
+                <Megaphone className="h-4 w-4" />
+                {t('Publish', 'نشر', language)}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

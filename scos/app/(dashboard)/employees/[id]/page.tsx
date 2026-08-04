@@ -9,16 +9,21 @@ import { Button } from '@/components/ui/Button';
 import { DetailSkeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { employeeService } from '@/modules/employee-management/service';
-import { Employee } from '@/types';
+import { ContractType, Employee } from '@/types';
 import { t, formatDate, formatCurrency, getContractTypeLabel, calculateAge } from '@/lib/utils';
-import { ArrowLeft, User, Mail, Phone, MapPin, Briefcase, DollarSign, Calendar, Heart, SearchX } from 'lucide-react';
+import { FormBuilder, FormField } from '@/engines/form-engine';
+import { useToast } from '@/components/ui/Toast';
+import { ArrowLeft, User, Mail, Phone, MapPin, Briefcase, DollarSign, Calendar, Heart, SearchX, Pencil, X } from 'lucide-react';
 
 export default function EmployeeDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const { language } = useLanguageStore();
+  const { addToast } = useToast();
   const [employee, setEmployee] = React.useState<Employee | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [editing, setEditing] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
     loadEmployee();
@@ -30,6 +35,116 @@ export default function EmployeeDetailPage() {
       setEmployee(res.data);
     }
     setLoading(false);
+  };
+
+  const editFields: FormField[][] = [
+    [
+      { name: 'fullName', label: t('Full Name', 'الاسم الكامل', language), labelAr: t('Full Name', 'الاسم الكامل', language), required: true },
+      { name: 'fullNameAr', label: t('Full Name (Arabic)', 'الاسم الكامل (عربي)', language), labelAr: t('Full Name (Arabic)', 'الاسم الكامل (عربي)', language) },
+    ],
+    [
+      { name: 'email', label: t('Email', 'البريد الإلكتروني', language), labelAr: t('Email', 'البريد الإلكتروني', language), type: 'email' },
+      { name: 'phone', label: t('Phone', 'الهاتف', language), labelAr: t('Phone', 'الهاتف', language), type: 'tel' },
+    ],
+    [
+      { name: 'nationalId', label: t('Iqama / National ID', 'رقم الهوية / الإقامة', language), labelAr: t('Iqama / National ID', 'رقم الهوية / الإقامة', language), validation: { minLength: 10, maxLength: 10, pattern: /^\d{10}$/ } },
+      { name: 'nationality', label: t('Nationality', 'الجنسية', language), labelAr: t('Nationality', 'الجنسية', language) },
+    ],
+    [
+      {
+        name: 'gender',
+        label: t('Gender', 'الجنس', language),
+        labelAr: t('Gender', 'الجنس', language),
+        type: 'select',
+        options: [
+          { value: 'male', label: t('Male', 'ذكر', language), labelAr: t('Male', 'ذكر', language) },
+          { value: 'female', label: t('Female', 'أنثى', language), labelAr: t('Female', 'أنثى', language) },
+        ],
+      },
+      {
+        name: 'maritalStatus',
+        label: t('Marital Status', 'الحالة الاجتماعية', language),
+        labelAr: t('Marital Status', 'الحالة الاجتماعية', language),
+        type: 'select',
+        options: [
+          { value: 'single', label: t('Single', 'أعزب', language), labelAr: t('Single', 'أعزب', language) },
+          { value: 'married', label: t('Married', 'متزوج', language), labelAr: t('Married', 'متزوج', language) },
+          { value: 'divorced', label: t('Divorced', 'مطلق', language), labelAr: t('Divorced', 'مطلق', language) },
+          { value: 'widowed', label: t('Widowed', 'أرمل', language), labelAr: t('Widowed', 'أرمل', language) },
+        ],
+      },
+    ],
+    [
+      { name: 'department', label: t('Department', 'القسم', language), labelAr: t('Department', 'القسم', language), required: true },
+      { name: 'position', label: t('Position', 'المنصب', language), labelAr: t('المنصب', 'المنصب', language), required: true },
+    ],
+    [
+      {
+        name: 'contractType',
+        label: t('Contract Type', 'نوع العقد', language),
+        labelAr: t('Contract Type', 'نوع العقد', language),
+        type: 'select',
+        options: [
+          { value: 'permanent', label: t('Permanent', 'دائم', language), labelAr: t('Permanent', 'دائم', language) },
+          { value: 'fixed_term', label: t('Fixed Term', 'محدد المدة', language), labelAr: t('Fixed Term', 'محدد المدة', language) },
+          { value: 'part_time', label: t('Part Time', 'دوام جزئي', language), labelAr: t('Part Time', 'دوام جزئي', language) },
+          { value: 'probation', label: t('Probation', 'تجريبي', language), labelAr: t('Probation', 'تجريبي', language) },
+        ],
+      },
+      { name: 'hireDate', label: t('Hire Date', 'تاريخ التعيين', language), labelAr: t('Hire Date', 'تاريخ التعيين', language), type: 'date' },
+    ],
+    [
+      { name: 'basicSalary', label: t('Basic Salary', 'الراتب الأساسي', language), labelAr: t('Basic Salary', 'الراتب الأساسي', language), type: 'number' },
+      { name: 'housingAllowance', label: t('Housing Allowance', 'بدل السكن', language), labelAr: t('Housing Allowance', 'بدل السكن', language), type: 'number' },
+    ],
+    [
+      { name: 'transportAllowance', label: t('Transport Allowance', 'بدل النقل', language), labelAr: t('Transport Allowance', 'بدل النقل', language), type: 'number' },
+      { name: 'bankName', label: t('Bank Name', 'اسم البنك', language), labelAr: t('Bank Name', 'اسم البنك', language) },
+    ],
+    [
+      { name: 'iban', label: t('IBAN', 'الآيبان', language), labelAr: t('IBAN', 'الآيبان', language), validation: { minLength: 24, maxLength: 24 } },
+      { name: 'city', label: t('City', 'المدينة', language), labelAr: t('City', 'المدينة', language) },
+    ],
+  ];
+
+  const handleSave = async (values: Record<string, string>) => {
+    if (!employee) return;
+    setSaving(true);
+    const res = await employeeService.update(employee.id, {
+      fullName: values.fullName || '',
+      fullNameAr: values.fullNameAr || '',
+      email: values.email || '',
+      phone: values.phone || '',
+      nationalId: values.nationalId || '',
+      nationality: values.nationality || 'Saudi',
+      gender: (values.gender as 'male' | 'female') || employee.gender,
+      maritalStatus: (values.maritalStatus as 'single' | 'married' | 'divorced' | 'widowed') || employee.maritalStatus,
+      department: values.department || '',
+      position: values.position || '',
+      contractType: (values.contractType as ContractType) || employee.contractType,
+      hireDate: values.hireDate || '',
+      salary: {
+        ...employee.salary,
+        basic: parseFloat(values.basicSalary) || 0,
+        housing: parseFloat(values.housingAllowance) || 0,
+        transportation: parseFloat(values.transportAllowance) || 0,
+        bankName: values.bankName || '',
+        iban: values.iban || '',
+        bankAccount: values.iban || '',
+      },
+      address: { ...employee.address, city: values.city || '' },
+    });
+    setSaving(false);
+    if (res.success) {
+      addToast({
+        type: 'success',
+        title: t('Employee updated successfully', 'تم تحديث الموظف بنجاح', language),
+      });
+      setEditing(false);
+      await loadEmployee();
+    } else {
+      addToast({ type: 'error', title: res.error || t('Failed to update employee', 'فشل في تحديث الموظف', language) });
+    }
   };
 
   if (loading) {
@@ -66,9 +181,59 @@ export default function EmployeeDetailPage() {
           <p className="text-sm text-gray-500">{employee.employeeId} - {employee.position}</p>
         </div>
         <Badge status={employee.status} locale={language} />
+        <div className="ms-auto flex items-center gap-2">
+          {editing ? (
+            <Button variant="outline" onClick={() => setEditing(false)}>
+              <X className="h-4 w-4" />
+              {t('Cancel', 'إلغاء', language)}
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => setEditing(true)}>
+              <Pencil className="h-4 w-4" />
+              {t('Edit', 'تعديل', language)}
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {editing ? (
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold">{t('Edit Employee', 'تعديل الموظف', language)}</h2>
+          </CardHeader>
+          <CardBody>
+            <FormBuilder
+              fields={editFields}
+              locale={language}
+              onSubmit={handleSave}
+              submitLabel={t('Save Changes', 'حفظ التغييرات', language)}
+              submitLabelAr={t('Save Changes', 'حفظ التغييرات', language)}
+              loading={saving}
+              defaultValues={{
+                fullName: employee.fullName,
+                fullNameAr: employee.fullNameAr,
+                email: employee.email,
+                phone: employee.phone,
+                nationalId: employee.nationalId,
+                nationality: employee.nationality,
+                gender: employee.gender,
+                maritalStatus: employee.maritalStatus,
+                department: employee.department,
+                position: employee.position,
+                contractType: employee.contractType,
+                hireDate: employee.hireDate,
+                basicSalary: String(employee.salary.basic),
+                housingAllowance: String(employee.salary.housing),
+                transportAllowance: String(employee.salary.transportation),
+                bankName: employee.salary.bankName || '',
+                iban: employee.salary.iban || '',
+                city: employee.address.city,
+              }}
+            />
+          </CardBody>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="flex items-center gap-3">
             <User className="h-5 w-5 text-primary" />
@@ -183,7 +348,8 @@ export default function EmployeeDetailPage() {
             </div>
           </CardBody>
         </Card>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

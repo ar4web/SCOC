@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { DataTable, Column } from '@/engines/table-engine';
 import { Badge } from '@/components/ui/Badge';
 import { attendanceService } from '@/modules/attendance/service';
-import { Attendance } from '@/types';
+import { employeeService } from '@/modules/employee-management/service';
+import { Attendance, Employee } from '@/types';
 import { t, formatDate } from '@/lib/utils';
 import { Clock, LogIn, LogOut, ClipboardList } from 'lucide-react';
 
@@ -16,6 +17,7 @@ export default function AttendancePage() {
   const { language, dir } = useLanguageStore();
   const { user } = useAuthStore();
   const [records, setRecords] = React.useState<Attendance[]>([]);
+  const [employees, setEmployees] = React.useState<Map<string, Employee>>(new Map());
   const [loading, setLoading] = React.useState(true);
   const [clocking, setClocking] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -27,8 +29,14 @@ export default function AttendancePage() {
   const loadRecords = async () => {
     setLoading(true);
     const employeeId = user?.role === 'employee' ? user.id : undefined;
-    const res = await attendanceService.list({ employeeId });
-    if (res.success && res.data) setRecords(res.data.data);
+    const [recordsRes, empRes] = await Promise.all([
+      attendanceService.list({ employeeId }),
+      employeeService.list({ page: 1, pageSize: 1000 }),
+    ]);
+    if (recordsRes.success && recordsRes.data) setRecords(recordsRes.data.data);
+    if (empRes.success && empRes.data) {
+      setEmployees(new Map(empRes.data.data.map((e) => [e.id, e])));
+    }
     setLoading(false);
   };
 
@@ -62,6 +70,22 @@ export default function AttendancePage() {
   const todayRecord = records.find((r) => r.date === today);
 
   const columns: Column<Attendance>[] = [
+    {
+      key: 'employeeId',
+      header: t('Employee', 'الموظف', language),
+      render: (r) => {
+        const emp = employees.get(r.employeeId);
+        if (!emp) return <span className="text-gray-400">{r.employeeId}</span>;
+        return (
+          <div>
+            <p className="font-medium text-gray-900">
+              {language === 'ar' ? emp.fullNameAr || emp.fullName : emp.fullName}
+            </p>
+            <p className="text-xs text-gray-500">{emp.employeeId}</p>
+          </div>
+        );
+      },
+    },
     { key: 'date', header: t('Date', 'التاريخ', language), render: (r) => formatDate(r.date) },
     { key: 'clockIn', header: t('Clock In', 'الحضور', language) },
     {

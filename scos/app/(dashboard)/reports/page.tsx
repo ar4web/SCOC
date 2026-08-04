@@ -36,6 +36,19 @@ export default function ReportsPage() {
   const departmentDistribution = stats.departmentDistribution;
   const contractDistribution = stats.contractDistribution;
   const statusDistribution = stats.statusDistribution;
+  const leaveStatus = stats.leaveStatus;
+
+  const leaveStatusLabels: Record<string, { en: string; ar: string }> = {
+    approved: { en: 'Approved', ar: 'مقبولة' },
+    pending: { en: 'Pending', ar: 'معلقة' },
+    rejected: { en: 'Rejected', ar: 'مرفوضة' },
+    cancelled: { en: 'Cancelled', ar: 'ملغاة' },
+  };
+
+  const getLeaveStatusLabel = (key: string) =>
+    language === 'ar'
+      ? leaveStatusLabels[key]?.ar || key
+      : leaveStatusLabels[key]?.en || key;
 
   const kpiCards = [
     {
@@ -159,6 +172,32 @@ export default function ReportsPage() {
                 series={statusDistribution.map((s) => s.count)}
                 labels={statusDistribution.map((s) => s.name)}
                 colors={['#198754', '#6B7280', '#DC3545']}
+                height={300}
+                locale={language}
+                dir={dir}
+              />
+            ) : (
+              <p className="text-center text-gray-500 py-8">
+                {t('No data available', 'لا توجد بيانات', language)}
+              </p>
+            )}
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex items-center gap-3">
+            <Calendar className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">
+              {t('Leave Requests', 'طلبات الإجازة', language)}
+            </h2>
+          </CardHeader>
+          <CardBody>
+            {leaveStatus.some((l) => l.count > 0) ? (
+              <Chart
+                type="donut"
+                series={leaveStatus.map((l) => l.count)}
+                labels={leaveStatus.map((l) => getLeaveStatusLabel(l.name))}
+                colors={['#198754', '#FFC107', '#DC3545', '#6B7280']}
                 height={300}
                 locale={language}
                 dir={dir}

@@ -26,4 +26,7 @@ export const communicationService = {
     api.post<Message>('/communication', { type: 'message', senderId, senderName, content }),
 
   getAnnouncements: () => api.get<{ data: Announcement[] }>('/communication?type=announcements'),
+
+  createAnnouncement: (data: Omit<Announcement, 'id' | 'createdAt'>) =>
+    api.post<Announcement>('/communication', { type: 'announcement', ...data }),
 };
