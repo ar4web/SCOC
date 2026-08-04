@@ -10,14 +10,17 @@ import { DataTable, Column } from '@/engines/table-engine';
 import { employeeService } from '@/modules/employee-management/service';
 import { Employee } from '@/types';
 import { t, formatCurrency } from '@/lib/utils';
-import { Users, Plus, Eye } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
+import { Users, Plus, Eye, Trash2 } from 'lucide-react';
 
 export default function EmployeesPage() {
   const router = useRouter();
   const { language, dir } = useLanguageStore();
+  const { addToast } = useToast();
   const [employees, setEmployees] = React.useState<Employee[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const [deleting, setDeleting] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     loadEmployees();
@@ -31,6 +34,19 @@ export default function EmployeesPage() {
       setTotal(res.data.total);
     }
     setLoading(false);
+  };
+
+  const handleDelete = async (emp: Employee) => {
+    if (!window.confirm(t(`Delete ${emp.fullName}?`, `حذف ${emp.fullNameAr || emp.fullName}؟`, language))) return;
+    setDeleting(emp.id);
+    const res = await employeeService.remove(emp.id);
+    if (res.success) {
+      addToast({ type: 'success', title: t('Employee deleted', 'تم حذف الموظف', language) });
+      loadEmployees();
+    } else {
+      addToast({ type: 'error', title: res.error || t('Failed to delete employee', 'فشل حذف الموظف', language) });
+    }
+    setDeleting(null);
   };
 
   const columns: Column<Employee>[] = [
@@ -63,13 +79,24 @@ export default function EmployeesPage() {
       key: 'actions',
       header: t('Actions', 'الإجراءات', language),
       render: (emp) => (
-        <Link
-          href={`/employees/${emp.id}`}
-          className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary-dark transition-colors"
-        >
-          <Eye className="h-4 w-4" />
-          {t('View', 'عرض', language)}
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/employees/${emp.id}`}
+            className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary-dark transition-colors"
+          >
+            <Eye className="h-4 w-4" />
+            {t('View', 'عرض', language)}
+          </Link>
+          <button
+            onClick={() => handleDelete(emp)}
+            disabled={deleting === emp.id}
+            className="inline-flex items-center gap-1 text-sm text-error hover:text-error-dark transition-colors disabled:opacity-50"
+            aria-label={t('Delete', 'حذف', language)}
+            title={t('Delete', 'حذف', language)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       ),
     },
   ];

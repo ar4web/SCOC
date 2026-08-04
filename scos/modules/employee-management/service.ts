@@ -22,4 +22,6 @@ export const employeeService = {
 
   update: (id: string, data: Partial<Omit<Employee, 'id' | 'employeeId' | 'createdAt' | 'updatedAt' | 'companyId'>>) =>
     api.put<Employee>(`/employees/${id}`, data),
+
+  remove: (id: string) => api.delete<{ success: boolean }>(`/employees/${id}`),
 };

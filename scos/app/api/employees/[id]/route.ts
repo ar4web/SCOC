@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getEmployeeById, updateEmployee } from '@/modules/employee-management/service';
+import { deleteEmployee } from '@/lib/mock-data';
 
 type Params = { params: { id: string } };
 
@@ -24,4 +25,12 @@ export async function PUT(req: Request, { params }: Params) {
     return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
   }
   return NextResponse.json(employee);
+}
+
+export async function DELETE(_req: Request, { params }: Params) {
+  const removed = deleteEmployee(params.id);
+  if (!removed) {
+    return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+  }
+  return NextResponse.json({ success: true });
 }

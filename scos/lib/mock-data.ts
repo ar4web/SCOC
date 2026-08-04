@@ -302,6 +302,19 @@ export function updateEmployee(
   return next;
 }
 
+export function deleteEmployee(id: string): boolean {
+  const removed = employees.delete(id);
+  if (removed) {
+    const company = companies.get('demo-company');
+    if (company) company.employeeCount = employees.size;
+  }
+  return removed;
+}
+
+export function deleteLeave(id: string): boolean {
+  return leaves.delete(id);
+}
+
 export function addLeave(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt'>): LeaveRequest {
   const leave: LeaveRequest = {
     ...data,

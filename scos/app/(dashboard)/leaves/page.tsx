@@ -14,7 +14,7 @@ import { LeaveCalendar } from '@/components/modules/LeaveCalendar';
 import { api } from '@/lib/api';
 import { Employee, LeaveRequest } from '@/types';
 import { t, formatDate, getLeaveTypeLabel } from '@/lib/utils';
-import { Calendar, Plus, CheckCircle2, XCircle, List, Clock, Loader2 } from 'lucide-react';
+import { Calendar, Plus, CheckCircle2, XCircle, List, Clock, Loader2, Trash2 } from 'lucide-react';
 
 export default function LeavesPage() {
   const { language, dir } = useLanguageStore();
@@ -67,6 +67,19 @@ export default function LeavesPage() {
       loadData();
     } else {
       addToast({ type: 'error', title: res.error || 'Action failed' });
+    }
+    setActionLoading(null);
+  };
+
+  const handleDelete = async (leave: LeaveRequest) => {
+    if (!window.confirm(t('Delete this leave request?', 'حذف طلب الإجازة هذا؟', language))) return;
+    setActionLoading(leave.id);
+    const res = await api.delete(`/leaves?id=${leave.id}`);
+    if (res.success) {
+      addToast({ type: 'success', title: t('Leave request deleted', 'تم حذف طلب الإجازة', language) });
+      loadData();
+    } else {
+      addToast({ type: 'error', title: res.error || t('Failed to delete leave request', 'فشل حذف طلب الإجازة', language) });
     }
     setActionLoading(null);
   };
@@ -127,6 +140,15 @@ export default function LeavesPage() {
                     title={t('Reject', 'رفض', language)}
                   >
                     <XCircle className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(leave)}
+                    disabled={actionLoading === leave.id}
+                    className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-error transition-colors disabled:opacity-50"
+                    aria-label={t('Delete', 'حذف', language)}
+                    title={t('Delete', 'حذف', language)}
+                  >
+                    <Trash2 className="h-5 w-5" />
                   </button>
                 </div>
               ) : (

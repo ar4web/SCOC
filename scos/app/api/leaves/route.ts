@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAllLeaves, createLeaveRequest, updateLeaveStatus } from '@/modules/leave-management/service';
+import { deleteLeave } from '@/lib/mock-data';
 import { LeaveRequest, LeaveStatus } from '@/types';
 
 export async function GET() {
@@ -67,4 +68,18 @@ export async function PUT(req: Request) {
   }
 
   return NextResponse.json(leave);
+}
+
+export async function DELETE(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+  if (!id) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  }
+
+  const removed = deleteLeave(id);
+  if (!removed) {
+    return NextResponse.json({ error: 'Leave request not found' }, { status: 404 });
+  }
+  return NextResponse.json({ success: true });
 }
